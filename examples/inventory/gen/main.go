@@ -24,7 +24,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gen: %v\n", err)
 		os.Exit(1)
 	}
-	if err := os.WriteFile("../"+schemagen.BindingsFileName, written, 0o644); err != nil {
+	// The file goes beside the descriptions, and go generate runs this with
+	// that directory as its working directory -- so the name is the whole
+	// path. A "../" here wrote a file one level up that nothing tracked and
+	// nothing compiled, which left the drift check in CI comparing a file the
+	// generator had not touched.
+	if err := os.WriteFile(schemagen.BindingsFileName, written, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "gen: %v\n", err)
 		os.Exit(1)
 	}

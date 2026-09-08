@@ -48,10 +48,15 @@ jobs:
 
       # Generated code is checked in, so a description changed without a
       # regeneration is caught here as well as by the drift test.
+      #
+      # status and not diff alone: a generator writing to the wrong path leaves
+      # an untracked file, which a diff does not see -- so the step passed
+      # while regenerating nothing.
       - name: Generated code
         run: |
           go generate ./...
-          git diff --exit-code
+          git status --porcelain
+          test -z "$(git status --porcelain)"
 
       - name: Examples
         run: go run ./examples/cmd/schemademo
