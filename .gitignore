@@ -1,0 +1,3 @@
+# Build output, never checked in. Generated *source* is checked in and has a
+# drift test; a binary is not source.
+/schemademo
