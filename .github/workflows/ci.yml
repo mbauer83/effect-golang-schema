@@ -11,16 +11,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      # effect-golang is not published yet, so go.mod resolves it from a
-      # sibling working copy. CI reproduces that layout rather than carrying a
-      # second replace directive that would drift from the local one.
+      # One checkout. go.mod requires the modules below this one by version, so
+      # this job resolves them the way anyone depending on this module does --
+      # which is the point of running it: a green run says the published
+      # dependencies are enough to build and test this commit.
       - uses: actions/checkout@v5
-        with:
-          path: effect-golang-schema
-      - uses: actions/checkout@v5
-        with:
-          repository: mbauer83/effect-golang
-          path: effect-golang
 
       - uses: actions/setup-go@v6
         with:
@@ -28,7 +23,6 @@ jobs:
           check-latest: true
 
       - name: Formatting
-        working-directory: effect-golang-schema
         run: |
           unformatted="$(gofmt -l .)"
           if [ -n "$unformatted" ]; then
@@ -38,32 +32,26 @@ jobs:
           fi
 
       - name: Build
-        working-directory: effect-golang-schema
         run: go build ./...
 
       - name: Vet
-        working-directory: effect-golang-schema
         run: go vet ./...
 
       # -count=1 defeats the test result cache, so a green run always reflects
       # the commit it ran on. -coverpkg is needed because the suites live
       # outside the packages they exercise.
       - name: Test
-        working-directory: effect-golang-schema
         run: go test -count=1 -coverpkg=./... ./...
 
       - name: Race
-        working-directory: effect-golang-schema
         run: go test -race -count=1 ./...
 
       # Generated code is checked in, so a description changed without a
       # regeneration is caught here as well as by the drift test.
       - name: Generated code
-        working-directory: effect-golang-schema
         run: |
           go generate ./...
           git diff --exit-code
 
       - name: Examples
-        working-directory: effect-golang-schema
         run: go run ./examples/cmd/schemademo

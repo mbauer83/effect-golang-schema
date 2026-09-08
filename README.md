@@ -65,17 +65,29 @@ go run ./examples/cmd/schemademo
 
 ## Development
 
-`effect-golang` is not published yet, so `go.mod` resolves it from a sibling
-working copy:
+`go.mod` requires the runtime by version, so what a consumer resolves is what
+this module was built against. Working on both at once is a workspace's job:
 
 ```text
 workspace/
+  go.work                   where the modules being worked on are
   effect-golang/            the runtime
   effect-golang-schema/     this module
   effect-golang-sql/        tables and migrations, on this
   effect-golang-web/        transports, on both
 ```
 
-A `replace` is ignored by anything that depends on *this* module, so it is a
-development arrangement and not a distribution one. Replace it with a version
-requirement once the runtime is tagged.
+```sh
+cd workspace
+go work init ./effect-golang ./effect-golang-schema ./effect-golang-sql ./effect-golang-web
+```
+
+The `go.work` file is not checked in to any of them: it belongs to whoever has
+several checked out at once, which is why it lives above all four. A `replace`
+cannot do this job. It is ignored by anything that depends on the module
+carrying it, so it says nothing to a consumer and only ever describes one
+person's layout -- and it hides the requirement a consumer will actually
+resolve.
+
+The four modules are versioned together and tagged in dependency order:
+[RELEASING.md](https://github.com/mbauer83/effect-golang/blob/main/RELEASING.md).
