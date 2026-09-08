@@ -13,7 +13,10 @@
 // format needs to learn nothing new to carry one.
 package dynamic
 
-import "time"
+import (
+	"time"
+	"unicode/utf8"
+)
 
 // Value is a value of unknown Go type but known shape.
 type Value interface {
@@ -131,3 +134,25 @@ func OfBytes(value []byte) Value { return Bytes{Value: value} }
 
 // OfTimestamp makes an instant.
 func OfTimestamp(value time.Time) Value { return Timestamp{Value: value} }
+
+// TextOf reads a value as text, and says whether it was.
+//
+// A byte string counts, when the bytes are text. Several sources hold
+// characters that way -- a database driver handing back a character column is
+// the one this exists for -- and which of the two representations a source
+// chose is the source's business rather than the value's meaning. Bytes that
+// are not valid UTF-8 are not text, so a binary column read as text is a
+// failure here and not a mangled string somewhere later.
+func TextOf(value Value) (string, bool) {
+	switch held := value.(type) {
+	case Text:
+		return held.Value, true
+	case Bytes:
+		if !utf8.Valid(held.Value) {
+			return "", false
+		}
+		return string(held.Value), true
+	default:
+		return "", false
+	}
+}

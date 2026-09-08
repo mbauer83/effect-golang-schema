@@ -84,6 +84,13 @@ value is meant to be is the description's business, not the value's.
 `ToDynamic` and `FromDynamic` cross between a typed value and a described one,
 so the two ways of using this package meet.
 
+Reading a `dynamic.Value` allows the source the choice it may not have had.
+An integer reads a whole `Number`, because JSON does not distinguish the two;
+text reads a `Bytes`, because a database driver hands a character column back as
+bytes and whether it does is the driver's decision and not the table's. Each
+tolerance has a limit: a fractional number is not an integer, and bytes that are
+not valid UTF-8 are not text.
+
 ### What a description can and cannot enforce
 
 It enforces **what it records**: a bound, a length, a pattern, an item count, a
