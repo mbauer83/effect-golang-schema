@@ -144,7 +144,7 @@ func TestAConstraintIsReadableByAWalkerOutsideThisModule(t *testing.T) {
 	// A projection has to be able to see a bound, or it describes a wider type
 	// than the codec accepts. The vocabulary is sealed, so a walker switches
 	// over it and knows it has covered everything.
-	code := schema.Matching(schema.MinLength(schema.Text(), 2), `^[a-z]{2,8}$`)
+	code := schema.Text().Constrained(schema.MinLength(2), schema.Matching(`^[a-z]{2,8}$`))
 	shape, isScalar := code.Structure().(structure.Scalar)
 	if !isScalar {
 		t.Fatalf("expected a scalar, got %#v", code.Structure())

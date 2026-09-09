@@ -123,11 +123,11 @@ func TestAWidthSurvivesADescriptionWithNoGoType(t *testing.T) {
 
 func TestABoundOutsideTheWidthCannotBeWritten(t *testing.T) {
 	// This is the compile-time half, and it cannot be tested at run time
-	// because it does not compile: schema.AtMost(schema.Int8(), 200) is
+	// because it does not compile: schema.Int8().Constrained(schema.AtMost[int8](200)) is
 	// rejected by the compiler, since 200 is not an int8. What is testable is
 	// that a bound inside the width narrows further and one at the edge is
 	// admitted.
-	narrower := schema.AtMost(schema.Int8(), 100)
+	narrower := schema.Int8().Constrained(schema.AtMost[int8](100))
 
 	if _, err := schema.DecodeJSON(narrower, []byte("100")); err != nil {
 		t.Fatalf("expected the narrowed bound to admit its own edge, got %v", err)

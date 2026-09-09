@@ -22,13 +22,13 @@ func TestConstraintsBecomeTheKeywordsThatSayTheSameThing(t *testing.T) {
 		Tags  []string
 	}
 	bounded := schema.Struct[constrained]("Reading",
-		schema.FieldOf("code", schema.Matching(schema.MaxLength(schema.Text(), 7), `^[A-Z]{2}-[0-9]{4}$`),
+		schema.FieldOf("code", schema.Text().Constrained(schema.MaxLength(7), schema.Matching(`^[A-Z]{2}-[0-9]{4}$`)),
 			func(value constrained) string { return value.Code },
 			func(value *constrained, code string) { value.Code = code }),
-		schema.FieldOf("pages", schema.AtMost(schema.AtLeast(schema.Int(), 1), 100),
+		schema.FieldOf("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100)),
 			func(value constrained) int { return value.Pages },
 			func(value *constrained, pages int) { value.Pages = pages }),
-		schema.FieldOf("tags", schema.MinItems(schema.List(schema.Text()), 1),
+		schema.FieldOf("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1)),
 			func(value constrained) []string { return value.Tags },
 			func(value *constrained, tags []string) { value.Tags = tags }),
 	)

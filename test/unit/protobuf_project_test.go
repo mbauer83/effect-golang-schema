@@ -37,11 +37,11 @@ var consignmentSchema = schema.Struct[consignment]("Consignment",
 		func(held *consignment, value string) { held.Reference = value }).
 		Numbered(1).
 		Documented("Reference identifies the consignment."),
-	schema.FieldOf("weight", schema.Above(schema.Float64(), 0),
+	schema.FieldOf("weight", schema.Float64().Constrained(schema.Above[float64](0)),
 		func(held consignment) float64 { return held.Weight },
 		func(held *consignment, value float64) { held.Weight = value }).
 		Numbered(2),
-	schema.FieldOf("parcels", schema.AtLeast(schema.Int32(), 1),
+	schema.FieldOf("parcels", schema.Int32().Constrained(schema.AtLeast[int32](1)),
 		func(held consignment) int32 { return held.Parcels },
 		func(held *consignment, value int32) { held.Parcels = value }).
 		Numbered(3),

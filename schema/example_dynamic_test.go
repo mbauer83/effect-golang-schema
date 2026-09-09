@@ -13,8 +13,8 @@ import (
 // and composes exactly as a typed schema does.
 func ExampleDescribedField() {
 	reading := schema.Struct[dynamic.Value]("Reading",
-		schema.DescribedField("code", schema.Matching(schema.Text(), `^[A-Z]{2}-[0-9]{4}$`)),
-		schema.DescribedField("pages", schema.AtMost(schema.AtLeast(schema.Int(), 1), 20000)),
+		schema.DescribedField("code", schema.Text().Constrained(schema.Matching(`^[A-Z]{2}-[0-9]{4}$`))),
+		schema.DescribedField("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))),
 	)
 
 	value, err := schema.DecodeJSON(reading, []byte(`{"code":"AB-1234","pages":632}`))

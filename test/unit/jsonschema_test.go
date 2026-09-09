@@ -223,7 +223,7 @@ func TestTheDocumentModelCarriesBoundsAsTypedFields(t *testing.T) {
 	// a bound without re-discovering how it was written.
 	component := jsonschema.Project(
 		schema.Struct[reading]("Reading",
-			schema.FieldOf("pages", schema.AtMost(schema.AtLeast(schema.Int(), 1), 100),
+			schema.FieldOf("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100)),
 				func(value reading) int { return value.Pages },
 				func(value *reading, pages int) { value.Pages = pages }),
 		).Structure(),

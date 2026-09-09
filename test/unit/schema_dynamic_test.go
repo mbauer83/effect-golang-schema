@@ -18,10 +18,10 @@ import (
 // without the accessors, which is the only part of a field declaration that
 // needs the type.
 var bookDescription = schema.Struct[dynamic.Value]("Book",
-	schema.DescribedField("title", schema.MinLength(schema.Text(), 1)).
+	schema.DescribedField("title", schema.Text().Constrained(schema.MinLength(1))).
 		Documented("what the book is called"),
-	schema.DescribedField("authors", schema.MinItems(schema.List(schema.Text()), 1)),
-	schema.DescribedField("pages", schema.AtMost(schema.AtLeast(schema.Int(), 1), 20000)),
+	schema.DescribedField("authors", schema.List(schema.Text()).Constrained(schema.MinItems[string](1))),
+	schema.DescribedField("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))),
 	schema.DescribedField("subtitle", schema.Text()).Optional(),
 	schema.DescribedField("id", schema.UUID()),
 )
@@ -96,7 +96,7 @@ func TestADescriptionAndItsTypedTwinAgree(t *testing.T) {
 	// it measures; the dynamic path enforces it from what was recorded. They
 	// have to reach the same verdict, or a generated struct would accept what
 	// its description refuses.
-	typed := schema.AtMost(schema.AtLeast(schema.Int(), 1), 10)
+	typed := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](10))
 	described := schema.Dynamic(typed.Structure())
 
 	for _, document := range []string{"0", "1", "5", "10", "11"} {
@@ -187,7 +187,7 @@ func TestADescriptionsMistakesAreReportedRatherThanPanicking(t *testing.T) {
 		// A faulted schema has a shape as well as a fault, so a description
 		// that took the shape and dropped the fault would look complete.
 		"a member whose schema is faulted": schema.Validate(
-			schema.Struct[dynamic.Value]("Book", schema.DescribedField("title", schema.Matching(schema.Text(), `[`)))),
+			schema.Struct[dynamic.Value]("Book", schema.DescribedField("title", schema.Text().Constrained(schema.Matching(`[`))))),
 		"no description":  schema.Validate(schema.Dynamic(nil)),
 		"no alternatives": schema.Validate(schema.OneOf[dynamic.Value]("Shape")),
 		// A bound field's getter returns a value and not whether there is one,

@@ -22,7 +22,7 @@ type Item struct {
 
 // ItemSchema describes Item. It is generated from its description.
 var ItemSchema = schema.Struct[Item]("Item",
-	schema.FieldOf("sku", schema.Matching(schema.Text(), "^[A-Z]{3}-[0-9]{5}$"),
+	schema.FieldOf("sku", schema.Text().Constrained(schema.Matching("^[A-Z]{3}-[0-9]{5}$")),
 		func(value Item) string { return value.Sku },
 		func(value *Item, field string) { value.Sku = field }).Documented("the stock-keeping unit, three letters and five digits"),
 	schema.FieldOf("onHand", schema.Uint16(),
@@ -34,10 +34,10 @@ var ItemSchema = schema.Struct[Item]("Item",
 	schema.FieldOf("id", schema.UUID(),
 		func(value Item) string { return value.ID },
 		func(value *Item, field string) { value.ID = field }),
-	schema.FieldOf("tags", schema.MinItems(schema.List(schema.Text()), 1),
+	schema.FieldOf("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1)),
 		func(value Item) []string { return value.Tags },
 		func(value *Item, field []string) { value.Tags = field }),
-	schema.OptionalFieldOf("note", schema.MaxLength(schema.Text(), 200),
+	schema.OptionalFieldOf("note", schema.Text().Constrained(schema.MaxLength(200)),
 		func(value Item) (string, bool) {
 			var absent string
 			if value.Note == nil {

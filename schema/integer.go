@@ -9,7 +9,7 @@ package schema
 //
 // Two things follow from the constructor being typed, and both are the point.
 // A bound outside the type's range is a compile error rather than a runtime
-// surprise -- AtMost(Int8(), 200) does not build, because 200 is not an int8 --
+// surprise -- AtMost[int8](200) does not build, because 200 is not an int8 --
 // and the range the type implies is recorded, so the contract states it without
 // anyone writing it down.
 //
@@ -105,7 +105,7 @@ func narrowed[A whole](precision structure.Precision, lowest int64, highest int6
 		func(value A) (int64, error) { return int64(value), nil },
 	)
 	return withPrecision(
-		AtMost(AtLeast(converted, A(lowest)), A(highest)),
+		converted.Constrained(AtLeast(A(lowest)), AtMost(A(highest))),
 		precision)
 }
 
@@ -116,7 +116,8 @@ func constrainedFloat(
 	lowest float32,
 	highest float32,
 ) Schema[float32] {
-	return withPrecision(AtMost(AtLeast(converted, lowest), highest), precision)
+	return withPrecision(
+		converted.Constrained(AtLeast(lowest), AtMost(highest)), precision)
 }
 
 // withPrecision records the Go representation in the description. The wire

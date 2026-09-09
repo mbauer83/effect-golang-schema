@@ -4,10 +4,10 @@ package schema
 // came from.
 //
 // There is one function per kind rather than one generic function, for the
-// reason the combinators themselves are per kind: measuring a value is
+// reason the constraints themselves are per kind: measuring a value is
 // type-dependent, and Go cannot dispatch a generic call on what A happens to
 // be. Each of these is called from a place that knows the type, which is what
-// makes reusing the real combinator possible -- and reusing it is what keeps
+// makes reusing the real constraint possible -- and reusing it is what keeps
 // one opinion about what a shape admits.
 
 import (
@@ -20,11 +20,11 @@ func constrainText(inner Schema[string], constraints []structure.Constraint) Sch
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.MinLength:
-			inner = MinLength(inner, narrowed.Value)
+			inner = inner.Constrained(MinLength(narrowed.Value))
 		case structure.MaxLength:
-			inner = MaxLength(inner, narrowed.Value)
+			inner = inner.Constrained(MaxLength(narrowed.Value))
 		case structure.Pattern:
-			inner = Matching(inner, narrowed.Expression)
+			inner = inner.Constrained(Matching(narrowed.Expression))
 		default:
 			return faulted[string](inner.node, misplacedConstraint("text"))
 		}
@@ -36,13 +36,13 @@ func constrainInteger(inner Schema[int64], constraints []structure.Constraint) S
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.AtLeast:
-			inner = AtLeast(inner, wireBound(narrowed.Value))
+			inner = inner.Constrained(AtLeast(wireBound(narrowed.Value)))
 		case structure.AtMost:
-			inner = AtMost(inner, wireBound(narrowed.Value))
+			inner = inner.Constrained(AtMost(wireBound(narrowed.Value)))
 		case structure.Above:
-			inner = Above(inner, wireBound(narrowed.Value))
+			inner = inner.Constrained(Above(wireBound(narrowed.Value)))
 		case structure.Below:
-			inner = Below(inner, wireBound(narrowed.Value))
+			inner = inner.Constrained(Below(wireBound(narrowed.Value)))
 		default:
 			return faulted[int64](inner.node, misplacedConstraint("a whole number"))
 		}
@@ -54,13 +54,13 @@ func constrainNumber(inner Schema[float64], constraints []structure.Constraint) 
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.AtLeast:
-			inner = AtLeast(inner, narrowed.Value)
+			inner = inner.Constrained(AtLeast(narrowed.Value))
 		case structure.AtMost:
-			inner = AtMost(inner, narrowed.Value)
+			inner = inner.Constrained(AtMost(narrowed.Value))
 		case structure.Above:
-			inner = Above(inner, narrowed.Value)
+			inner = inner.Constrained(Above(narrowed.Value))
 		case structure.Below:
-			inner = Below(inner, narrowed.Value)
+			inner = inner.Constrained(Below(narrowed.Value))
 		default:
 			return faulted[float64](inner.node, misplacedConstraint("a number"))
 		}
@@ -72,9 +72,9 @@ func constrainList[A any](inner Schema[[]A], constraints []structure.Constraint)
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.MinItems:
-			inner = MinItems(inner, narrowed.Value)
+			inner = inner.Constrained(MinItems[A](narrowed.Value))
 		case structure.MaxItems:
-			inner = MaxItems(inner, narrowed.Value)
+			inner = inner.Constrained(MaxItems[A](narrowed.Value))
 		default:
 			return faulted[[]A](inner.node, misplacedConstraint("a list"))
 		}

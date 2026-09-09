@@ -45,9 +45,10 @@ accessors:
 
 ```go
 var Book = schema.Struct[dynamic.Value]("Book",
-    schema.DescribedField("title", schema.MinLength(schema.Text(), 1)).
+    schema.DescribedField("title", schema.Text().Constrained(schema.MinLength(1))).
         Documented("what the book is called"),
-    schema.DescribedField("pages", schema.AtMost(schema.AtLeast(schema.Int(), 1), 20000)),
+    schema.DescribedField("pages",
+        schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))),
     schema.DescribedField("subtitle", schema.Text()).Optional(),
     schema.DescribedField("id", schema.UUID()),
 )
@@ -145,9 +146,11 @@ Where the description is the source of truth, the Go types come from it:
 ```go
 // examples/inventory/definitions -- unexported, because they are input
 var item = schema.Struct[dynamic.Value]("Item",
-    schema.DescribedField("sku", schema.Matching(schema.Text(), `^[A-Z]{3}-[0-9]{5}$`)),
+    schema.DescribedField("sku",
+        schema.Text().Constrained(schema.Matching(`^[A-Z]{3}-[0-9]{5}$`))),
     schema.DescribedField("onHand", schema.Uint16()),
-    schema.DescribedField("note", schema.MaxLength(schema.Text(), 200)).Optional(),
+    schema.DescribedField("note",
+        schema.Text().Constrained(schema.MaxLength(200))).Optional(),
 )
 
 func Descriptions() []structure.Node { return []structure.Node{item.Structure()} }
@@ -169,7 +172,8 @@ type Item struct {
 }
 
 var ItemSchema = schema.Struct[Item]("Item",
-    schema.FieldOf("sku", schema.Matching(schema.Text(), "^[A-Z]{3}-[0-9]{5}$"), get, set),
+    schema.FieldOf("sku",
+        schema.Text().Constrained(schema.Matching("^[A-Z]{3}-[0-9]{5}$")), get, set),
     ...
 )
 ```
@@ -260,7 +264,7 @@ to know nothing about the width.
 
 Three things follow, and each of them is the reason to state a width:
 
-- **A bound outside the type's range is a compile error.** `AtMost(Int8(), 200)`
+- **A bound outside the type's range is a compile error.** `AtMost[int8](200)`
   does not build, because 200 is not an `int8`. The constructor being precisely
   typed is what buys this; no check at run time is involved.
 - **The range the width implies is recorded**, so the published contract states
@@ -354,21 +358,47 @@ refused for the same reason.
 
 ## Constraints
 
-A kind says a value is a number; a constraint says which numbers.
+A kind says a value is a number; a constraint says which numbers. A constraint
+is a **value**, and it is applied by a method — the same rule `Named` and
+`Documented` follow, because all three change a schema rather than build one.
 
 ```go
-pages := schema.AtMost(schema.AtLeast(schema.Int(), 1), 20000)
-code  := schema.Matching(schema.Text(), `^[A-Z]{2}-[0-9]{4}$`)
-tags  := schema.MinItems(schema.List(schema.Text()), 1)
+name  := schema.Text().Constrained(schema.MinLength(1), schema.MaxLength(32))
+pages := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))
+code  := schema.Text().Constrained(schema.Matching(`^[A-Z]{2}-[0-9]{4}$`))
+tags  := schema.List(schema.Text()).Constrained(schema.MinItems[string](1))
 ```
 
-| Combinator | Narrows |
+| Constraint | Narrows |
 |---|---|
 | `AtLeast`, `AtMost` | a number, inclusively |
 | `Above`, `Below` | a number, exclusively |
 | `MinLength`, `MaxLength` | a string, in **characters** rather than bytes |
 | `Matching(pattern)` | a string, by a Go (RE2) regular expression |
 | `MinItems`, `MaxItems` | how many elements a list carries |
+
+`Constraint[A]` is the type it is about, which is what keeps a misapplication a
+compile error: `MinLength` is a `Constraint[string]` and `Int64()` is a
+`Schema[int64]`, so a length on a number does not build.
+
+### Why a value and a method, and not a chain of methods
+
+`Text().MinLength(1).MaxLength(32)` would read better still, and Go cannot give
+it and the compile-time check at once. A method's receiver type parameters are
+*declarations*, not arguments, so `func (Schema[string]) MinLength(int)`
+silently declares a parameter **named** `string` and lands the method on every
+schema — `Schema[Book].MinLength(3)` then builds. A method also cannot narrow
+the receiver's constraint (`Schema[A numeric]` is a syntax error), and Go 1.27's
+method type parameters add parameters rather than narrowing the receiver. A
+builder type per shape would restrict correctly, and then inference goes:
+`List(element Described[A])` cannot infer `A` from a builder, because Go unifies
+type arguments structurally and never through interface satisfaction.
+
+So the constraint carries the type instead of the receiver. The one place that
+costs something is a bound with no schema to read the type from — Go does not
+infer a type argument from the parameter a value is passed as — so a number and
+an item count name theirs: `AtLeast[int64](1)`, `MinItems[string](1)`. A length
+never does; it is only ever about text.
 
 One declaration does two jobs: it refuses a value and it appears in the
 published contract. A constraint that only did the first would leave a client to

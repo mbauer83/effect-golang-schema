@@ -28,7 +28,7 @@ var address = schema.Struct[dynamic.Value]("Address",
 var orderLine = schema.Struct[dynamic.Value]("OrderLine",
 	schema.DescribedField("id", schema.UUID()).Identity(),
 	schema.DescribedField("sku", schema.Text()),
-	schema.DescribedField("quantity", schema.AtLeast(schema.Int32(), 1)),
+	schema.DescribedField("quantity", schema.Int32().Constrained(schema.AtLeast[int32](1))),
 	schema.DescribedField("lineTotal", schema.Int64()).Computed().Defaulting(dynamic.OfInteger(0)),
 )
 

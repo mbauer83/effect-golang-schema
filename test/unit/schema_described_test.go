@@ -18,11 +18,11 @@ import (
 // themselves descriptions.
 var shapeDescription = schema.OneOf[dynamic.Value]("Shape",
 	schema.DescribedVariant("circle", schema.Struct[dynamic.Value]("Circle",
-		schema.DescribedField("radius", schema.Above(schema.Float64(), 0)))).
+		schema.DescribedField("radius", schema.Float64().Constrained(schema.Above[float64](0))))).
 		Documented("a circle, by its radius"),
 	schema.DescribedVariant("rectangle", schema.Struct[dynamic.Value]("Rectangle",
-		schema.DescribedField("width", schema.Above(schema.Float64(), 0)),
-		schema.DescribedField("height", schema.Above(schema.Float64(), 0)))),
+		schema.DescribedField("width", schema.Float64().Constrained(schema.Above[float64](0))),
+		schema.DescribedField("height", schema.Float64().Constrained(schema.Above[float64](0))))),
 )
 
 func TestADescribedUnionRoundTripsAndRefusesTheSameThings(t *testing.T) {

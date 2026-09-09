@@ -24,15 +24,15 @@ import (
 
 // item is one stocked line.
 var item = schema.Struct[dynamic.Value]("Item",
-	schema.DescribedField("sku", schema.Matching(schema.Text(), `^[A-Z]{3}-[0-9]{5}$`)).
+	schema.DescribedField("sku", schema.Text().Constrained(schema.Matching(`^[A-Z]{3}-[0-9]{5}$`))).
 		Documented("the stock-keeping unit, three letters and five digits"),
 	schema.DescribedField("onHand", schema.Uint16()).
 		Documented("how many are on hand"),
 	schema.DescribedField("weightGrams", schema.Float32()).
 		Documented("what one unit weighs"),
 	schema.DescribedField("id", schema.UUID()),
-	schema.DescribedField("tags", schema.MinItems(schema.List(schema.Text()), 1)),
-	schema.DescribedField("note", schema.MaxLength(schema.Text(), 200)).Optional(),
+	schema.DescribedField("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1))),
+	schema.DescribedField("note", schema.Text().Constrained(schema.MaxLength(200))).Optional(),
 ).Documented("one stocked line")
 
 // movement is a change in what is stocked.

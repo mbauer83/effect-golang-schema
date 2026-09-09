@@ -23,8 +23,8 @@ import (
 
 // UUID admits the textual form of a UUID, in any case.
 func UUID() Schema[string] {
-	return Matching(Formatted("uuid"),
-		`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	return Formatted("uuid").Constrained(Matching(
+		`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`))
 }
 
 // Email admits one addr-spec, which is what a form field carries.
@@ -74,7 +74,7 @@ func URI() Schema[string] {
 // It annotates as "uri", because that is the registered format name and there
 // is no registered one for a locator.
 func URL() Schema[string] {
-	return Matching(Formatted("uri"), `^[A-Za-z][A-Za-z0-9+.\-]*://[^/?#]+`)
+	return Formatted("uri").Constrained(Matching(`^[A-Za-z][A-Za-z0-9+.\-]*://[^/?#]+`))
 }
 
 // URIReference admits a URI or a relative reference.
@@ -92,10 +92,9 @@ func URIReference() Schema[string] {
 func Hostname() Schema[string] {
 	// The expression already refuses an empty name and a label that starts or
 	// ends with a hyphen; the length is the one rule it cannot state.
-	return MaxLength(
-		Matching(Formatted("hostname"),
-			`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$`),
-		253)
+	return Formatted("hostname").Constrained(
+		Matching(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$`),
+		MaxLength(253))
 }
 
 // IPv4 admits a dotted-quad address.
@@ -166,33 +165,37 @@ func checked[A any](inner Schema[A], check func(A) error) Schema[A] {
 type Constructor struct {
 	Call    string
 	Carries int
+	// Holds is the Go type the call describes, because a generator emitting a
+	// bound has to name it: a constraint is a value now rather than a wrapper,
+	// so there is no inner schema for the compiler to read the type from.
+	Holds string
 }
 
 // FormatConstructors names the constructor for each standard format.
 var FormatConstructors = map[string]Constructor{
-	"uuid":          {Call: "schema.UUID()", Carries: constraintsIn(UUID())},
-	"email":         {Call: "schema.Email()", Carries: constraintsIn(Email())},
-	"uri":           {Call: "schema.URI()", Carries: constraintsIn(URI())},
-	"uri-reference": {Call: "schema.URIReference()", Carries: constraintsIn(URIReference())},
-	"hostname":      {Call: "schema.Hostname()", Carries: constraintsIn(Hostname())},
-	"ipv4":          {Call: "schema.IPv4()", Carries: constraintsIn(IPv4())},
-	"ipv6":          {Call: "schema.IPv6()", Carries: constraintsIn(IPv6())},
+	"uuid":          {Call: "schema.UUID()", Carries: constraintsIn(UUID()), Holds: "string"},
+	"email":         {Call: "schema.Email()", Carries: constraintsIn(Email()), Holds: "string"},
+	"uri":           {Call: "schema.URI()", Carries: constraintsIn(URI()), Holds: "string"},
+	"uri-reference": {Call: "schema.URIReference()", Carries: constraintsIn(URIReference()), Holds: "string"},
+	"hostname":      {Call: "schema.Hostname()", Carries: constraintsIn(Hostname()), Holds: "string"},
+	"ipv4":          {Call: "schema.IPv4()", Carries: constraintsIn(IPv4()), Holds: "string"},
+	"ipv6":          {Call: "schema.IPv6()", Carries: constraintsIn(IPv6()), Holds: "string"},
 }
 
 // PrecisionConstructors names the constructor for each Go numeric width.
 var PrecisionConstructors = map[structure.Precision]Constructor{
-	structure.Int8Bits:    {Call: "schema.Int8()", Carries: constraintsIn(Int8())},
-	structure.Int16Bits:   {Call: "schema.Int16()", Carries: constraintsIn(Int16())},
-	structure.Int32Bits:   {Call: "schema.Int32()", Carries: constraintsIn(Int32())},
-	structure.Int64Bits:   {Call: "schema.Int64()", Carries: constraintsIn(Int64())},
-	structure.IntBits:     {Call: "schema.Int()", Carries: constraintsIn(Int())},
-	structure.Uint8Bits:   {Call: "schema.Uint8()", Carries: constraintsIn(Uint8())},
-	structure.Uint16Bits:  {Call: "schema.Uint16()", Carries: constraintsIn(Uint16())},
-	structure.Uint32Bits:  {Call: "schema.Uint32()", Carries: constraintsIn(Uint32())},
-	structure.Uint64Bits:  {Call: "schema.Uint64()", Carries: constraintsIn(Uint64())},
-	structure.UintBits:    {Call: "schema.Uint()", Carries: constraintsIn(Uint())},
-	structure.Float32Bits: {Call: "schema.Float32()", Carries: constraintsIn(Float32())},
-	structure.Float64Bits: {Call: "schema.Float64()", Carries: constraintsIn(Float64())},
+	structure.Int8Bits:    {Call: "schema.Int8()", Carries: constraintsIn(Int8()), Holds: "int8"},
+	structure.Int16Bits:   {Call: "schema.Int16()", Carries: constraintsIn(Int16()), Holds: "int16"},
+	structure.Int32Bits:   {Call: "schema.Int32()", Carries: constraintsIn(Int32()), Holds: "int32"},
+	structure.Int64Bits:   {Call: "schema.Int64()", Carries: constraintsIn(Int64()), Holds: "int64"},
+	structure.IntBits:     {Call: "schema.Int()", Carries: constraintsIn(Int()), Holds: "int"},
+	structure.Uint8Bits:   {Call: "schema.Uint8()", Carries: constraintsIn(Uint8()), Holds: "uint8"},
+	structure.Uint16Bits:  {Call: "schema.Uint16()", Carries: constraintsIn(Uint16()), Holds: "uint16"},
+	structure.Uint32Bits:  {Call: "schema.Uint32()", Carries: constraintsIn(Uint32()), Holds: "uint32"},
+	structure.Uint64Bits:  {Call: "schema.Uint64()", Carries: constraintsIn(Uint64()), Holds: "uint64"},
+	structure.UintBits:    {Call: "schema.Uint()", Carries: constraintsIn(Uint()), Holds: "uint"},
+	structure.Float32Bits: {Call: "schema.Float32()", Carries: constraintsIn(Float32()), Holds: "float32"},
+	structure.Float64Bits: {Call: "schema.Float64()", Carries: constraintsIn(Float64()), Holds: "float64"},
 }
 
 // constraintsIn counts what a constructor records, so a generator emitting the

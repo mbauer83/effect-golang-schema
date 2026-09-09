@@ -6,133 +6,65 @@ package schema
 // that breaks its own constraint is a mistake here, and finding it at the
 // boundary is better than sending it.
 //
-// Each constraint is its own combinator rather than one generic Constrained,
-// because measuring a value is type-dependent -- a number is compared, a string
-// is counted, a list is counted differently -- and a generic one would have to
-// take a measuring function nobody wants to write.
+// A constraint is a value and is applied by a method, which is the same rule
+// Named and Documented follow -- a modifier changes a schema rather than
+// building one, and a reader should not have to remember which of them wrap
+// and which are called on what they change. Written as wrappers, two bounds on
+// one string read inside out:
+//
+//	MaxLength(MinLength(Text(), 1), 32)     // the subject is in the middle
+//	Text().Constrained(MinLength(1), MaxLength(32))
+//
+// Each constraint is its own constructor rather than one generic Constrained
+// taking a measuring function, because measuring a value is type-dependent --
+// a number is compared, a string is counted, a list is counted differently --
+// and a generic one would have to take a function nobody wants to write.
+//
+// The type parameter is what keeps a misapplication a compile error: MinLength
+// is a Constraint[string] and Text() is a Schema[string], so a length on a
+// number does not build. It cannot be done with a method per constraint
+// instead: Go has no way to declare a method for particular instantiations of
+// a generic type -- the receiver's type parameters are declarations, so
+// `func (Schema[string]) MinLength(int)` silently declares a parameter *named*
+// string and lands the method on every schema -- and a method cannot narrow
+// the receiver's constraint either.
 
 import (
-	"regexp"
 	"strconv"
 
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// numeric is every Go type a bound can be stated over.
+// Constraint is a narrowing of what a shape admits, of the type it admits.
 //
-// It is the whole numeric breadth of the language rather than the two shapes
-// the wire has, which is what makes a bound outside a type's range a compile
-// error: AtMost(Int8(), 200) does not build, because 200 is not an int8.
-type numeric interface {
-	~int | ~int8 | ~int16 | ~int32 | ~int64 |
-		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
-		~float32 | ~float64
+// The same word as structure.Constraint and deliberately: that is the
+// narrowing as a description carries it, and this is the narrowing as this
+// package applies it -- the description, plus the check that enforces it, plus
+// the type it is about. One concept, two levels, the way Schema is to
+// structure.Node.
+type Constraint[A any] struct {
+	described structure.Constraint
+	check     func(A) error
+	fault     error
 }
 
-// AtLeast admits values no less than minimum.
-func AtLeast[A numeric](inner Schema[A], minimum A) Schema[A] {
-	return constrained(inner, structure.AtLeast{Value: float64(minimum)},
-		func(value A) error {
-			if value < minimum {
-				return fail("is less than "+number(minimum), nil)
-			}
-			return nil
-		})
-}
-
-// AtMost admits values no greater than maximum.
-func AtMost[A numeric](inner Schema[A], maximum A) Schema[A] {
-	return constrained(inner, structure.AtMost{Value: float64(maximum)},
-		func(value A) error {
-			if value > maximum {
-				return fail("is greater than "+number(maximum), nil)
-			}
-			return nil
-		})
-}
-
-// Above admits values strictly greater than the bound.
-func Above[A numeric](inner Schema[A], bound A) Schema[A] {
-	return constrained(inner, structure.Above{Value: float64(bound)},
-		func(value A) error {
-			if value <= bound {
-				return fail("is not above "+number(bound), nil)
-			}
-			return nil
-		})
-}
-
-// Below admits values strictly less than the bound.
-func Below[A numeric](inner Schema[A], bound A) Schema[A] {
-	return constrained(inner, structure.Below{Value: float64(bound)},
-		func(value A) error {
-			if value >= bound {
-				return fail("is not below "+number(bound), nil)
-			}
-			return nil
-		})
-}
-
-// MinLength admits strings of at least the given length, counted in characters
-// rather than bytes: a length a client can check is the one it can see.
-func MinLength(inner Schema[string], atLeast int) Schema[string] {
-	return constrained(inner, structure.MinLength{Value: atLeast},
-		func(value string) error {
-			if length(value) < atLeast {
-				return fail("is shorter than "+strconv.Itoa(atLeast)+" characters", nil)
-			}
-			return nil
-		})
-}
-
-// MaxLength admits strings of at most the given length, in characters.
-func MaxLength(inner Schema[string], atMost int) Schema[string] {
-	return constrained(inner, structure.MaxLength{Value: atMost},
-		func(value string) error {
-			if length(value) > atMost {
-				return fail("is longer than "+strconv.Itoa(atMost)+" characters", nil)
-			}
-			return nil
-		})
-}
-
-// Matching admits strings the expression matches. The syntax is Go's, which is
-// RE2; a pattern that does not compile is a declaration mistake and is reported
-// by Validate rather than panicking at the first request.
-func Matching(inner Schema[string], expression string) Schema[string] {
-	compiled, err := regexp.Compile(expression)
-	if err != nil {
-		return faulted[string](inner.node, fail("the pattern does not compile", err))
+// Constrained is this schema, admitting only what all of those admit.
+//
+// In the order given, so a value that breaks two of them is reported against
+// the first -- which is the one a reader of the declaration meets first.
+func (schema Schema[A]) Constrained(constraints ...Constraint[A]) Schema[A] {
+	narrowed := schema
+	for _, constraint := range constraints {
+		if constraint.fault != nil {
+			return faulted[A](schema.node, constraint.fault)
+		}
+		narrowed = constrained(narrowed, constraint.described, constraint.check)
 	}
-	return constrained(inner, structure.Pattern{Expression: expression},
-		func(value string) error {
-			if !compiled.MatchString(value) {
-				return fail("does not match "+expression, nil)
-			}
-			return nil
-		})
+	return narrowed
 }
 
-// MinItems admits sequences of at least the given length.
-func MinItems[A any](inner Schema[[]A], atLeast int) Schema[[]A] {
-	return constrained(inner, structure.MinItems{Value: atLeast},
-		func(value []A) error {
-			if len(value) < atLeast {
-				return fail("has fewer than "+strconv.Itoa(atLeast)+" items", nil)
-			}
-			return nil
-		})
-}
-
-// MaxItems admits sequences of at most the given length.
-func MaxItems[A any](inner Schema[[]A], atMost int) Schema[[]A] {
-	return constrained(inner, structure.MaxItems{Value: atMost},
-		func(value []A) error {
-			if len(value) > atMost {
-				return fail("has more than "+strconv.Itoa(atMost)+" items", nil)
-			}
-			return nil
-		})
+func narrowing[A any](described structure.Constraint, check func(A) error) Constraint[A] {
+	return Constraint[A]{described: described, check: check}
 }
 
 // constrained records the constraint in the description and checks it in both
