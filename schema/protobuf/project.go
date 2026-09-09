@@ -28,7 +28,7 @@ func Project(node structure.Node, packageName string) (Document, error) {
 		declared: map[string]bool{},
 		visiting: map[string]bool{},
 	}
-	root, err := projection.named(node)
+	root, err := projection.typeNameOf(node)
 	if err != nil {
 		return Document{}, err
 	}
@@ -86,12 +86,12 @@ func ProjectServices(packageName string, procedures ...Declared) (Document, erro
 }
 
 func (projection *projector) declaredMethod(procedure Declared) (Method, error) {
-	request, err := projection.named(procedure.Request)
+	request, err := projection.typeNameOf(procedure.Request)
 	if err != nil {
 		return Method{}, fmt.Errorf("the request of %s/%s: %w",
 			procedure.Service, procedure.Method, err)
 	}
-	response, err := projection.named(procedure.Response)
+	response, err := projection.typeNameOf(procedure.Response)
 	if err != nil {
 		return Method{}, fmt.Errorf("the response of %s/%s: %w",
 			procedure.Service, procedure.Method, err)
@@ -111,11 +111,11 @@ type projector struct {
 	imports  []string
 }
 
-// named declares the message a node is, and returns its name.
+// typeNameOf declares the message a node is, and returns its name.
 //
 // Only an object, a union or a reference has a name; anything else at the root
 // is not a protobuf message, because a message is the unit protobuf transfers.
-func (projection *projector) named(node structure.Node) (string, error) {
+func (projection *projector) typeNameOf(node structure.Node) (string, error) {
 	switch shape := node.(type) {
 	case structure.Object:
 		return projection.message(shape)
@@ -200,7 +200,7 @@ func (projection *projector) reference(reference structure.Reference) (string, e
 		// elsewhere -- but not where this file is the whole contract.
 		return "", fmt.Errorf("%q is referred to and not described", reference.Name)
 	}
-	return projection.named(reference.Resolve())
+	return projection.typeNameOf(reference.Resolve())
 }
 
 func (projection *projector) declare(message Message) {
@@ -208,7 +208,7 @@ func (projection *projector) declare(message Message) {
 	projection.messages = append(projection.messages, message)
 }
 
-func (projection *projector) importing(path string) {
+func (projection *projector) addImport(path string) {
 	for _, already := range projection.imports {
 		if already == path {
 			return

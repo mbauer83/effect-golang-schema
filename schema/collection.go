@@ -14,7 +14,7 @@ import (
 func List[A any](element Schema[A]) Schema[[]A] {
 	node := structure.Sequence{Element: element.node}
 	if fault := Validate(element); fault != nil {
-		return faulted[[]A](node, fault)
+		return faultedSchema[[]A](node, fault)
 	}
 
 	return of[[]A](
@@ -62,7 +62,7 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 		Value: value.node,
 	}
 	if fault := Validate(value); fault != nil {
-		return faulted[map[string]A](node, fault)
+		return faultedSchema[map[string]A](node, fault)
 	}
 
 	return of[map[string]A](
@@ -84,11 +84,11 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 		func(from Source) (map[string]A, error) {
 			decoded := make(map[string]A)
 			err := from.ReadObject(func(key string) error {
-				held, err := Decode(value, from)
+				heldValue, err := Decode(value, from)
 				if err != nil {
 					return within(key, err)
 				}
-				decoded[key] = held
+				decoded[key] = heldValue
 				return nil
 			})
 			if err != nil {
@@ -107,7 +107,7 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 // differently, so the schema does too.
 func Nullable[A any](inner Schema[A]) Schema[*A] {
 	if fault := Validate(inner); fault != nil {
-		return faulted[*A](inner.node, fault)
+		return faultedSchema[*A](inner.node, fault)
 	}
 
 	return of[*A](
@@ -126,11 +126,11 @@ func Nullable[A any](inner Schema[A]) Schema[*A] {
 			if absent {
 				return nil, nil
 			}
-			held, err := Decode(inner, from)
+			decoded, err := Decode(inner, from)
 			if err != nil {
 				return nil, err
 			}
-			return &held, nil
+			return &decoded, nil
 		},
 	)
 }

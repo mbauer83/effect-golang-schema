@@ -44,9 +44,9 @@ type occurrence struct {
 	fixed uint64
 }
 
-// gathered reads the message into its fields' occurrences, in the order they
+// readOccurrences reads the message into its fields' occurrences, in the order they
 // appeared, skipping the numbers the description does not know.
-func gathered(known map[int]bool, bytes []byte) (map[int][]occurrence, error) {
+func readOccurrences(known map[int]bool, bytes []byte) (map[int][]occurrence, error) {
 	from := &reader{bytes: bytes}
 	found := map[int][]occurrence{}
 	for !from.done() {
@@ -60,7 +60,7 @@ func gathered(known map[int]bool, bytes []byte) (map[int][]occurrence, error) {
 			}
 			continue
 		}
-		appearance, err := appearing(from, kind)
+		appearance, err := readOccurrence(from, kind)
 		if err != nil {
 			return nil, fmt.Errorf("field %d: %w", number, err)
 		}
@@ -69,7 +69,7 @@ func gathered(known map[int]bool, bytes []byte) (map[int][]occurrence, error) {
 	return found, nil
 }
 
-func appearing(from *reader, kind wireType) (occurrence, error) {
+func readOccurrence(from *reader, kind wireType) (occurrence, error) {
 	switch kind {
 	case varying:
 		value, err := from.varint()
@@ -81,8 +81,8 @@ func appearing(from *reader, kind wireType) (occurrence, error) {
 		value, err := from.fixed32()
 		return occurrence{kind: kind, fixed: uint64(value)}, err
 	case counted:
-		held, err := from.block()
-		return occurrence{kind: kind, bytes: held}, err
+		block, err := from.block()
+		return occurrence{kind: kind, bytes: block}, err
 	default:
 		return occurrence{}, fmt.Errorf("wire type %d is not one this format defines", kind)
 	}
@@ -96,7 +96,7 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 		}
 		known[member.Number] = true
 	}
-	found, err := gathered(known, bytes)
+	found, err := readOccurrences(known, bytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", object.Name, err)
 	}
@@ -104,7 +104,7 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 	// In the order the description declares them, not the order the wire
 	// carried them: the representation's objects are ordered, and a reader that
 	// forwarded what it received should send the same thing twice.
-	held := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
+	makeed := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
 	for _, member := range object.Fields {
 		value, present, err := readMember(member, found[member.Number])
 		if err != nil {
@@ -113,9 +113,9 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 		if !present {
 			continue
 		}
-		held.Fields = append(held.Fields, dynamic.Field{Name: member.Name, Value: value})
+		makeed.Fields = append(makeed.Fields, dynamic.Field{Name: member.Name, Value: value})
 	}
-	return held, nil
+	return makeed, nil
 }
 
 // readMember is the value a field's occurrences are, and whether it was there.

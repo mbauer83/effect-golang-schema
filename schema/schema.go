@@ -101,10 +101,10 @@ func of[A any](
 	return Schema[A]{node: node, encode: encode, decode: decode}
 }
 
-// faulted builds a schema that reports a declaration mistake whenever it is
+// faultedSchema builds a schema that reports a declaration mistake whenever it is
 // used, keeping whatever structure was declared so a projection still has
 // something to show.
-func faulted[A any](node structure.Node, err error) Schema[A] {
+func faultedSchema[A any](node structure.Node, err error) Schema[A] {
 	return Schema[A]{node: node, fault: err}
 }
 
@@ -165,14 +165,14 @@ func TransformOrFail[A, B any](
 	from func(B) (A, error),
 ) Schema[B] {
 	if fault := Validate(inner); fault != nil {
-		return faulted[B](inner.node, fault)
+		return faultedSchema[B](inner.node, fault)
 	}
 	return of(
 		inner.node,
 		func(value B, into Sink) error {
 			underlying, err := from(value)
 			if err != nil {
-				return refused(err)
+				return refusalError(err)
 			}
 			return Encode(inner, underlying, into)
 		},
@@ -185,7 +185,7 @@ func TransformOrFail[A, B any](
 			converted, err := to(underlying)
 			if err != nil {
 				var missing B
-				return missing, refused(err)
+				return missing, refusalError(err)
 			}
 			return converted, nil
 		},

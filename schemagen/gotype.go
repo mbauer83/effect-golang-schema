@@ -43,8 +43,8 @@ func goTypeOf(node structure.Node) (string, error) {
 // width down says so, and one that did not gets the widest thing the wire can
 // carry.
 func goScalar(shape structure.Scalar) string {
-	if named := shape.Precision.String(); named != "" {
-		return named
+	if string := shape.Precision.String(); string != "" {
+		return string
 	}
 	switch shape.Kind {
 	case structure.Integer:

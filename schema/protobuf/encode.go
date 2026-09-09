@@ -33,7 +33,7 @@ func written(node structure.Node, value dynamic.Value) ([]byte, error) {
 }
 
 func writtenObject(object structure.Object, value dynamic.Value) ([]byte, error) {
-	held, isObject := value.(dynamic.Object)
+	heldValue, isObject := value.(dynamic.Object)
 	if !isObject {
 		return nil, fmt.Errorf("%s is a message, and the value is a %T", object.Name, value)
 	}
@@ -43,7 +43,7 @@ func writtenObject(object structure.Object, value dynamic.Value) ([]byte, error)
 		if member.Number < 1 {
 			return nil, fmt.Errorf("field %q of %s: %w", member.Name, object.Name, errUnnumbered)
 		}
-		carried, present := held.Member(member.Name)
+		carried, present := heldValue.Member(member.Name)
 		if !present {
 			continue
 		}
@@ -63,14 +63,14 @@ func writtenUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 	if union.Discriminator != "" {
 		return nil, errDiscriminated
 	}
-	held, isObject := value.(dynamic.Object)
+	object, isObject := value.(dynamic.Object)
 	if !isObject {
 		return nil, fmt.Errorf("%s is a oneof, and the value is a %T", union.Name, value)
 	}
-	chosen, only := held.Only()
+	chosen, only := object.Only()
 	if !only {
 		return nil, fmt.Errorf("%s is a choice of one, and the value chose %d",
-			union.Name, len(held.Fields))
+			union.Name, len(object.Fields))
 	}
 
 	for _, variant := range union.Variants {
@@ -93,7 +93,7 @@ func writtenUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 func field(into *writer, member structure.Field, value dynamic.Value) error {
 	switch shape := member.Node.(type) {
 	case structure.Sequence:
-		return repeated(into, member.Number, shape, value)
+		return encodeRepeated(into, member.Number, shape, value)
 	case structure.Mapping:
 		return entries(into, member.Number, shape, value)
 	case structure.Nullable:
@@ -132,26 +132,26 @@ func single(into *writer, member structure.Field, value dynamic.Value) error {
 	}
 }
 
-// repeated writes a list.
+// encodeRepeated writes a list.
 //
 // Numeric and boolean elements are packed into one length-delimited field,
 // which is what proto3 does by default and what a reader expects; strings,
 // bytes and messages are written one field each, because they are already
 // length-delimited and packing them would be a second length nobody reads.
-func repeated(
+func encodeRepeated(
 	into *writer,
 	number int,
 	sequence structure.Sequence,
 	value dynamic.Value,
 ) error {
-	held, isList := value.(dynamic.List)
+	list, isList := value.(dynamic.List)
 	if !isList {
 		return fmt.Errorf("a repeated field takes a list, and the value is a %T", value)
 	}
 	if packable(sequence.Element) {
-		return packed(into, number, sequence.Element, held)
+		return encodePacked(into, number, sequence.Element, list)
 	}
-	for index, element := range held.Elements {
+	for index, element := range list.Elements {
 		if err := single(into,
 			structure.Field{Node: sequence.Element, Number: number}, element); err != nil {
 			return fmt.Errorf("element %d: %w", index, err)
@@ -160,22 +160,22 @@ func repeated(
 	return nil
 }
 
-// packed writes the elements into one length-delimited field, with no tag of
+// encodePacked writes the elements into one length-delimited field, with no tag of
 // their own.
-func packed(
+func encodePacked(
 	into *writer,
 	number int,
 	element structure.Node,
-	held dynamic.List,
+	list dynamic.List,
 ) error {
-	if len(held.Elements) == 0 {
+	if len(list.Elements) == 0 {
 		// An empty repeated field is written as nothing at all, which is how
 		// proto3 says a list is empty: there is no other way to say it.
 		return nil
 	}
 	elements := &writer{}
 	scalar := element.(structure.Scalar)
-	for index, value := range held.Elements {
+	for index, value := range list.Elements {
 		if err := packedOne(elements, scalar, value); err != nil {
 			return fmt.Errorf("element %d: %w", index, err)
 		}
@@ -207,11 +207,11 @@ func entries(
 	mapping structure.Mapping,
 	value dynamic.Value,
 ) error {
-	held, isObject := value.(dynamic.Object)
+	object, isObject := value.(dynamic.Object)
 	if !isObject {
 		return fmt.Errorf("a map takes an object, and the value is a %T", value)
 	}
-	for _, entry := range held.Fields {
+	for _, entry := range object.Fields {
 		pair := &writer{}
 		if err := scalar(pair, 1,
 			structure.Scalar{Kind: structure.Text}, dynamic.Text{Value: entry.Name}, false); err != nil {

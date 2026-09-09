@@ -55,11 +55,11 @@ func WriteBindings(packageName string, described ...structure.Node) ([]byte, err
 }
 
 func writeBinding(written *bytes.Buffer, shape structure.Node, reachable []structure.Node) error {
-	switch named := shape.(type) {
+	switch inner := shape.(type) {
 	case structure.Object:
-		return writeObjectBinding(written, named, markersFor(named.Name, reachable))
+		return writeObjectBinding(written, inner, markersFor(inner.Name, reachable))
 	case structure.Union:
-		return writeUnionBinding(written, named)
+		return writeUnionBinding(written, inner)
 	default:
 		return fmt.Errorf("a description binds an object or a union, not %T", shape)
 	}

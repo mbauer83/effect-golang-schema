@@ -80,11 +80,11 @@ func OptionalFieldOf[A, B any](
 			return ok
 		},
 		encode: func(value A, into Sink) error {
-			held, ok := get(value)
+			geted, ok := get(value)
 			if !ok {
 				return into.Null()
 			}
-			return Encode(shape, held, into)
+			return Encode(shape, geted, into)
 		},
 		decode: func(target *A, from Source) error {
 			absent, err := from.Null()

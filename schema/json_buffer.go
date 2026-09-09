@@ -66,11 +66,11 @@ func (source *jsonSource) bufferObject() (dynamic.Value, error) {
 		// The name is taken out of the token before anything else is read: a
 		// token is only good until the next call to the decoder.
 		name := token.String()
-		held, err := source.Buffer()
+		buffered, err := source.Buffer()
 		if err != nil {
 			return nil, within(name, err)
 		}
-		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: held})
+		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: buffered})
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
 		return nil, readFailure("reading the end of an object", err)
@@ -84,11 +84,11 @@ func (source *jsonSource) bufferList() (dynamic.Value, error) {
 	}
 	list := dynamic.List{Elements: []dynamic.Value{}}
 	for source.decoder.PeekKind() != ']' {
-		held, err := source.Buffer()
+		buffered, err := source.Buffer()
 		if err != nil {
 			return nil, within(listIndex(len(list.Elements)), err)
 		}
-		list.Elements = append(list.Elements, held)
+		list.Elements = append(list.Elements, buffered)
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
 		return nil, readFailure("reading the end of a list", err)

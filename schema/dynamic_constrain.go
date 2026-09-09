@@ -26,7 +26,7 @@ func constrainText(inner Schema[string], constraints []structure.Constraint) Sch
 		case structure.Pattern:
 			inner = inner.Constrained(Matching(narrowed.Expression))
 		default:
-			return faulted[string](inner.node, misplacedConstraint("text"))
+			return faultedSchema[string](inner.node, misplacedConstraint("text"))
 		}
 	}
 	return inner
@@ -44,7 +44,7 @@ func constrainInteger(inner Schema[int64], constraints []structure.Constraint) S
 		case structure.Below:
 			inner = inner.Constrained(Below(wireBound(narrowed.Value)))
 		default:
-			return faulted[int64](inner.node, misplacedConstraint("a whole number"))
+			return faultedSchema[int64](inner.node, misplacedConstraint("a whole number"))
 		}
 	}
 	return inner
@@ -62,7 +62,7 @@ func constrainNumber(inner Schema[float64], constraints []structure.Constraint) 
 		case structure.Below:
 			inner = inner.Constrained(Below(narrowed.Value))
 		default:
-			return faulted[float64](inner.node, misplacedConstraint("a number"))
+			return faultedSchema[float64](inner.node, misplacedConstraint("a number"))
 		}
 	}
 	return inner
@@ -76,7 +76,7 @@ func constrainList[A any](inner Schema[[]A], constraints []structure.Constraint)
 		case structure.MaxItems:
 			inner = inner.Constrained(MaxItems[A](narrowed.Value))
 		default:
-			return faulted[[]A](inner.node, misplacedConstraint("a list"))
+			return faultedSchema[[]A](inner.node, misplacedConstraint("a list"))
 		}
 	}
 	return inner

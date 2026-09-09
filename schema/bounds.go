@@ -29,7 +29,7 @@ type numeric interface {
 
 // AtLeast admits values no less than minimum.
 func AtLeast[A numeric](minimum A) Constraint[A] {
-	return narrowing(structure.AtLeast{Value: float64(minimum)},
+	return newConstraint(structure.AtLeast{Value: float64(minimum)},
 		func(value A) error {
 			if value < minimum {
 				return fail("is less than "+number(minimum), nil)
@@ -40,7 +40,7 @@ func AtLeast[A numeric](minimum A) Constraint[A] {
 
 // AtMost admits values no greater than maximum.
 func AtMost[A numeric](maximum A) Constraint[A] {
-	return narrowing(structure.AtMost{Value: float64(maximum)},
+	return newConstraint(structure.AtMost{Value: float64(maximum)},
 		func(value A) error {
 			if value > maximum {
 				return fail("is greater than "+number(maximum), nil)
@@ -51,7 +51,7 @@ func AtMost[A numeric](maximum A) Constraint[A] {
 
 // Above admits values strictly greater than the bound.
 func Above[A numeric](bound A) Constraint[A] {
-	return narrowing(structure.Above{Value: float64(bound)},
+	return newConstraint(structure.Above{Value: float64(bound)},
 		func(value A) error {
 			if value <= bound {
 				return fail("is not above "+number(bound), nil)
@@ -62,7 +62,7 @@ func Above[A numeric](bound A) Constraint[A] {
 
 // Below admits values strictly less than the bound.
 func Below[A numeric](bound A) Constraint[A] {
-	return narrowing(structure.Below{Value: float64(bound)},
+	return newConstraint(structure.Below{Value: float64(bound)},
 		func(value A) error {
 			if value >= bound {
 				return fail("is not below "+number(bound), nil)
@@ -74,7 +74,7 @@ func Below[A numeric](bound A) Constraint[A] {
 // MinLength admits strings of at least the given length, counted in characters
 // rather than bytes: a length a client can check is the one it can see.
 func MinLength(atLeast int) Constraint[string] {
-	return narrowing(structure.MinLength{Value: atLeast},
+	return newConstraint(structure.MinLength{Value: atLeast},
 		func(value string) error {
 			if length(value) < atLeast {
 				return fail("is shorter than "+strconv.Itoa(atLeast)+" characters", nil)
@@ -85,7 +85,7 @@ func MinLength(atLeast int) Constraint[string] {
 
 // MaxLength admits strings of at most the given length, in characters.
 func MaxLength(atMost int) Constraint[string] {
-	return narrowing(structure.MaxLength{Value: atMost},
+	return newConstraint(structure.MaxLength{Value: atMost},
 		func(value string) error {
 			if length(value) > atMost {
 				return fail("is longer than "+strconv.Itoa(atMost)+" characters", nil)
@@ -102,7 +102,7 @@ func Matching(expression string) Constraint[string] {
 	if err != nil {
 		return Constraint[string]{fault: fail("the pattern does not compile", err)}
 	}
-	return narrowing(structure.Pattern{Expression: expression},
+	return newConstraint(structure.Pattern{Expression: expression},
 		func(value string) error {
 			if !compiled.MatchString(value) {
 				return fail("does not match "+expression, nil)
@@ -117,7 +117,7 @@ func Matching(expression string) Constraint[string] {
 // no longer an inner schema to read it from, and Go does not infer a type
 // argument from the parameter a value is passed as.
 func MinItems[A any](atLeast int) Constraint[[]A] {
-	return narrowing(structure.MinItems{Value: atLeast},
+	return newConstraint(structure.MinItems{Value: atLeast},
 		func(value []A) error {
 			if len(value) < atLeast {
 				return fail("has fewer than "+strconv.Itoa(atLeast)+" items", nil)
@@ -128,7 +128,7 @@ func MinItems[A any](atLeast int) Constraint[[]A] {
 
 // MaxItems admits sequences of at most the given length.
 func MaxItems[A any](atMost int) Constraint[[]A] {
-	return narrowing(structure.MaxItems{Value: atMost},
+	return newConstraint(structure.MaxItems{Value: atMost},
 		func(value []A) error {
 			if len(value) > atMost {
 				return fail("has more than "+strconv.Itoa(atMost)+" items", nil)

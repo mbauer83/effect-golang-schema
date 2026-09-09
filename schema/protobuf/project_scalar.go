@@ -15,7 +15,7 @@ import (
 )
 
 func (projection *projector) scalar(scalar structure.Scalar) (shape, error) {
-	notes := noted(scalar.Constraints)
+	notes := constraintNotes(scalar.Constraints)
 	if scalar.Format != "" {
 		notes = append(notes, "format: "+scalar.Format)
 	}
@@ -28,7 +28,7 @@ func (projection *projector) scalar(scalar structure.Scalar) (shape, error) {
 	case structure.Bytes:
 		return shape{name: "bytes", notes: notes}, nil
 	case structure.Timestamp:
-		projection.importing(Timestamps)
+		projection.addImport(Timestamps)
 		return shape{name: "google.protobuf.Timestamp", notes: notes}, nil
 	case structure.Number:
 		if scalar.Precision == structure.Float32Bits {
@@ -59,52 +59,52 @@ func integerType(precision structure.Precision) string {
 	}
 }
 
-// noted is what the constraints say, as prose.
+// constraintNotes is what the constraints say, as prose.
 //
 // Proto3 has no validation keywords. A comment is honest about not being
 // enforced, where an invented option would look like a rule the wire carried --
 // and the server does enforce them, through the same schema.
-func noted(constraints []structure.Constraint) []string {
+func constraintNotes(constraints []structure.Constraint) []string {
 	if len(constraints) == 0 {
 		return nil
 	}
 	said := make([]string, 0, len(constraints))
 	for _, constraint := range constraints {
-		if rendered := stated(constraint); rendered != "" {
+		if rendered := constraintText(constraint); rendered != "" {
 			said = append(said, rendered)
 		}
 	}
 	return said
 }
 
-func stated(constraint structure.Constraint) string {
-	switch held := constraint.(type) {
+func constraintText(constraint structure.Constraint) string {
+	switch inner := constraint.(type) {
 	case structure.AtLeast:
-		return "at least " + number(held.Value)
+		return "at least " + number(inner.Value)
 	case structure.AtMost:
-		return "at most " + number(held.Value)
+		return "at most " + number(inner.Value)
 	case structure.Above:
-		return "above " + number(held.Value)
+		return "above " + number(inner.Value)
 	case structure.Below:
-		return "below " + number(held.Value)
+		return "below " + number(inner.Value)
 	case structure.MinLength:
-		return "at least " + pluralised(held.Value, "character")
+		return "at least " + pluralise(inner.Value, "character")
 	case structure.MaxLength:
-		return "at most " + pluralised(held.Value, "character")
+		return "at most " + pluralise(inner.Value, "character")
 	case structure.Pattern:
-		return "matching " + held.Expression
+		return "matching " + inner.Expression
 	case structure.MinItems:
-		return "at least " + pluralised(held.Value, "item")
+		return "at least " + pluralise(inner.Value, "item")
 	case structure.MaxItems:
-		return "at most " + pluralised(held.Value, "item")
+		return "at most " + pluralise(inner.Value, "item")
 	default:
 		return ""
 	}
 }
 
-// pluralised words a count, because "at least 1 characters" appears in a file
+// pluralise words a count, because "at least 1 characters" appears in a file
 // other people read.
-func pluralised(value int, thing string) string {
+func pluralise(value int, thing string) string {
 	if value == 1 {
 		return "1 " + thing
 	}

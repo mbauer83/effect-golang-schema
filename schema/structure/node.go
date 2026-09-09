@@ -101,8 +101,8 @@ func (object Object) Identity() (Field, bool) {
 // in the customer's row; an order line has an identity and lives in its own
 // table.
 func (object Object) IsEntity() bool {
-	_, named := object.Identity()
-	return named
+	_, identity := object.Identity()
+	return identity
 }
 
 // Field is one member of an object.
@@ -229,18 +229,18 @@ func (Reference) node() {}
 // and one answer is the point: a description says what a field is, and a
 // projection reads it.
 func EntityBehind(node Node) (Object, bool) {
-	switch held := node.(type) {
+	switch inner := node.(type) {
 	case Object:
-		return held, held.IsEntity()
+		return inner, inner.IsEntity()
 	case Reference:
-		if held.Resolve == nil {
+		if inner.Resolve == nil {
 			return Object{}, false
 		}
-		return EntityBehind(held.Resolve())
+		return EntityBehind(inner.Resolve())
 	case Sequence:
-		return EntityBehind(held.Element)
+		return EntityBehind(inner.Element)
 	case Nullable:
-		return EntityBehind(held.Inner)
+		return EntityBehind(inner.Inner)
 	default:
 		return Object{}, false
 	}

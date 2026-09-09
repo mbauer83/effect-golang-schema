@@ -12,25 +12,25 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-func derived(node structure.Node, keeping supplied) (structure.Node, error) {
-	if reference, named := node.(structure.Reference); named && reference.Resolve == nil {
+func deriveNode(node structure.Node, keeping supplied) (structure.Node, error) {
+	if reference, namedValue := node.(structure.Reference); namedValue && reference.Resolve == nil {
 		// A name with nothing behind it cannot be derived from, and passing it
 		// through would publish a shape whose contents nobody can see.
 		return nil, fmt.Errorf("%q: %w", reference.Name, ErrUnresolved)
 	}
-	object, isObject := resolved(node)
+	object, isObject := resolveObject(node)
 	if !isObject {
 		return nil, ErrNotAnObject
 	}
 
 	fields := make([]structure.Field, 0, len(object.Fields))
 	for _, field := range object.Fields {
-		kept, keep, err := keptField(field, keeping)
+		keptFielded, keep, err := keptField(field, keeping)
 		if err != nil {
 			return nil, fmt.Errorf("field %q of %s: %w", field.Name, object.Name, err)
 		}
 		if keep {
-			fields = append(fields, kept)
+			fields = append(fields, keptFielded)
 		}
 	}
 	if len(fields) == 0 {
@@ -52,7 +52,7 @@ func keptField(
 		return structure.Field{}, false, nil
 	}
 
-	entity, nested := entityCollected(field.Node)
+	entity, nested := collectedEntity(field.Node)
 	if nested && !keeping.reachIntoEntities {
 		return structure.Field{}, false, nil
 	}
@@ -91,32 +91,32 @@ func derivedWithin(
 	// identity is its to supply -- but it is never *updated* through the
 	// parent, because it has an identity of its own to be selected by. Keeping
 	// the outer decision is what makes that fall out.
-	inner, err := derived(entity, keeping)
+	inner, err := deriveNode(entity, keeping)
 	if err != nil {
 		return nil, err
 	}
-	return rewrapped(node, inner)
+	return rewrapNode(node, inner)
 }
 
-// rewrapped puts a derived element back inside whatever held the original.
-func rewrapped(node structure.Node, inner structure.Node) (structure.Node, error) {
-	switch held := node.(type) {
+// rewrapNode puts a derived element back inside whatever held the original.
+func rewrapNode(node structure.Node, inner structure.Node) (structure.Node, error) {
+	switch shape := node.(type) {
 	case structure.Object:
 		return inner, nil
 	case structure.Reference:
 		return inner, nil
 	case structure.Sequence:
-		return structure.Sequence{Element: inner, Constraints: held.Constraints}, nil
+		return structure.Sequence{Element: inner, Constraints: shape.Constraints}, nil
 	case structure.Nullable:
 		return structure.Nullable{Inner: inner}, nil
 	case structure.Mapping:
-		return structure.Mapping{Key: held.Key, Value: inner}, nil
+		return structure.Mapping{Key: shape.Key, Value: inner}, nil
 	default:
 		return nil, fmt.Errorf("%T holds an entity and this walk cannot rebuild it", node)
 	}
 }
 
-// entityCollected is the entity a field carries, through whatever wraps it,
+// collectedEntity is the entity a field carries, through whatever wraps it,
 // including a map.
 //
 // Deliberately not structure.EntityBehind, and the difference is the map. That
@@ -129,34 +129,34 @@ func rewrapped(node structure.Node, inner structure.Node) (structure.Node, error
 //
 // Two questions that agree about everything except a map, so they are two
 // functions rather than one with a flag.
-func entityCollected(node structure.Node) (structure.Object, bool) {
-	switch held := node.(type) {
+func collectedEntity(node structure.Node) (structure.Object, bool) {
+	switch shape := node.(type) {
 	case structure.Object:
-		return held, held.IsEntity()
+		return shape, shape.IsEntity()
 	case structure.Reference:
-		object, isObject := resolved(held)
+		object, isObject := resolveObject(shape)
 		return object, isObject && object.IsEntity()
 	case structure.Sequence:
-		return entityCollected(held.Element)
+		return collectedEntity(shape.Element)
 	case structure.Nullable:
-		return entityCollected(held.Inner)
+		return collectedEntity(shape.Inner)
 	case structure.Mapping:
-		return entityCollected(held.Value)
+		return collectedEntity(shape.Value)
 	default:
 		return structure.Object{}, false
 	}
 }
 
-// resolved is the object a node is, following one reference.
-func resolved(node structure.Node) (structure.Object, bool) {
-	switch held := node.(type) {
+// resolveObject is the object a node is, following one reference.
+func resolveObject(node structure.Node) (structure.Object, bool) {
+	switch shape := node.(type) {
 	case structure.Object:
-		return held, true
+		return shape, true
 	case structure.Reference:
-		if held.Resolve == nil {
+		if shape.Resolve == nil {
 			return structure.Object{}, false
 		}
-		return resolved(held.Resolve())
+		return resolveObject(shape.Resolve())
 	default:
 		return structure.Object{}, false
 	}

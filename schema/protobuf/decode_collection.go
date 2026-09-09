@@ -44,7 +44,7 @@ func readElements(element structure.Node, appearance occurrence) ([]dynamic.Valu
 		}
 		return []dynamic.Value{value}, nil
 	}
-	return unpacked(element.(structure.Scalar), appearance.bytes)
+	return decodePacked(element.(structure.Scalar), appearance.bytes)
 }
 
 // readEntries gathers a map from the repeated message proto3 says it is.
@@ -52,7 +52,7 @@ func readEntries(
 	mapping structure.Mapping,
 	found []occurrence,
 ) (dynamic.Value, bool, error) {
-	held := dynamic.Object{Fields: []dynamic.Field{}}
+	heldValue := dynamic.Object{Fields: []dynamic.Field{}}
 	for _, appearance := range found {
 		if appearance.kind != counted {
 			return nil, false, fmt.Errorf("a map entry is a message, and this is wire type %d",
@@ -62,9 +62,9 @@ func readEntries(
 		if err != nil {
 			return nil, false, err
 		}
-		held.Fields = append(held.Fields, dynamic.Field{Name: name, Value: value})
+		heldValue.Fields = append(heldValue.Fields, dynamic.Field{Name: name, Value: value})
 	}
-	return held, true, nil
+	return heldValue, true, nil
 }
 
 // readEntry reads one entry: the key in field 1 and the value in field 2.
@@ -76,7 +76,7 @@ func readEntries(
 // the key and the value are there.
 func readEntry(mapping structure.Mapping, bytes []byte) (string, dynamic.Value, error) {
 	known := map[int]bool{1: true, 2: true}
-	found, err := gathered(known, bytes)
+	found, err := readOccurrences(known, bytes)
 	if err != nil {
 		return "", nil, err
 	}

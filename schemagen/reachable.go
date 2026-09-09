@@ -31,9 +31,9 @@ type discovery struct {
 func (found *discovery) walk(node structure.Node) error {
 	switch shape := node.(type) {
 	case structure.Object:
-		return found.named(shape.Name, shape, func() error { return found.members(shape) })
+		return found.visitNamed(shape.Name, shape, func() error { return found.members(shape) })
 	case structure.Union:
-		return found.named(shape.Name, shape, func() error { return found.variants(shape) })
+		return found.visitNamed(shape.Name, shape, func() error { return found.variants(shape) })
 	case structure.Sequence:
 		return found.walk(shape.Element)
 	case structure.Mapping:
@@ -53,10 +53,10 @@ func (found *discovery) walk(node structure.Node) error {
 	}
 }
 
-// named records a shape once and then walks what it contains. The shape is
+// visitNamed records a shape once and then walks what it contains. The shape is
 // recorded before its parts, so a type appears before the ones it refers to
 // and a recursive description terminates.
-func (found *discovery) named(name string, shape structure.Node, within func() error) error {
+func (found *discovery) visitNamed(name string, shape structure.Node, within func() error) error {
 	if name == "" {
 		return fmt.Errorf("a shape with no name cannot become a Go type")
 	}

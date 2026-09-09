@@ -50,10 +50,10 @@ func (into *writer) tag(number int, kind wireType) {
 	into.varint(uint64(number)<<3 | uint64(kind))
 }
 
-func (into *writer) block(number int, held []byte) {
+func (into *writer) block(number int, payload []byte) {
 	into.tag(number, counted)
-	into.varint(uint64(len(held)))
-	into.bytes = append(into.bytes, held...)
+	into.varint(uint64(len(payload)))
+	into.bytes = append(into.bytes, payload...)
 }
 
 func (into *writer) fixed64(value uint64) {
@@ -112,9 +112,9 @@ func (from *reader) block() ([]byte, error) {
 	if uint64(len(from.bytes)-from.at) < length {
 		return nil, errTruncated
 	}
-	held := from.bytes[from.at : from.at+int(length)]
+	bytesEntry := from.bytes[from.at : from.at+int(length)]
 	from.at += int(length)
-	return held, nil
+	return bytesEntry, nil
 }
 
 func (from *reader) fixed64() (uint64, error) {

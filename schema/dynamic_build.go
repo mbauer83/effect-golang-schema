@@ -73,10 +73,10 @@ func dynamicSequence(shape structure.Sequence) Schema[dynamic.Value] {
 		})
 }
 
-// dynamicMapping reads a variable set of keys. The keys come back sorted,
+// dynamicMapSchema reads a variable set of keys. The keys come back sorted,
 // because Map encodes them sorted and a value that read back in a different
 // order would not round trip.
-func dynamicMapping(shape structure.Mapping) Schema[dynamic.Value] {
+func dynamicMapSchema(shape structure.Mapping) Schema[dynamic.Value] {
 	return liftScalar(Map(Dynamic(shape.Value)),
 		func(entries map[string]dynamic.Value) (dynamic.Value, error) {
 			object := dynamic.Object{Fields: make([]dynamic.Field, 0, len(entries))}
@@ -101,11 +101,11 @@ func dynamicMapping(shape structure.Mapping) Schema[dynamic.Value] {
 
 func dynamicNullable(shape structure.Nullable) Schema[dynamic.Value] {
 	return liftScalar(Nullable(Dynamic(shape.Inner)),
-		func(held *dynamic.Value) (dynamic.Value, error) {
-			if held == nil {
+		func(value *dynamic.Value) (dynamic.Value, error) {
+			if value == nil {
 				return dynamic.Absent{}, nil
 			}
-			return *held, nil
+			return *value, nil
 		},
 		func(value dynamic.Value) (*dynamic.Value, error) {
 			if _, absent := value.(dynamic.Absent); absent {
@@ -120,7 +120,7 @@ func dynamicNullable(shape structure.Nullable) Schema[dynamic.Value] {
 // description that refers to it is still being assembled.
 func dynamicReference(shape structure.Reference) Schema[dynamic.Value] {
 	if shape.Resolve == nil {
-		return faulted[dynamic.Value](shape,
+		return faultedSchema[dynamic.Value](shape,
 			fail("refers to a shape that cannot be resolved", nil))
 	}
 	return Deferred(func() Schema[dynamic.Value] { return Dynamic(shape.Resolve()) })

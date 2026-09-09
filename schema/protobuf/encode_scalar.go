@@ -30,46 +30,46 @@ func scalar(
 ) error {
 	switch shape.Kind {
 	case structure.Text:
-		held, ok := value.(dynamic.Text)
+		text, ok := value.(dynamic.Text)
 		if !ok {
-			return mismatched("a string", value)
+			return kindMismatchError("a string", value)
 		}
-		if held.Value == "" && !present {
+		if text.Value == "" && !present {
 			return nil
 		}
-		into.block(number, []byte(held.Value))
+		into.block(number, []byte(text.Value))
 	case structure.Bytes:
-		held, ok := value.(dynamic.Bytes)
+		bytes, ok := value.(dynamic.Bytes)
 		if !ok {
-			return mismatched("bytes", value)
+			return kindMismatchError("bytes", value)
 		}
-		if len(held.Value) == 0 && !present {
+		if len(bytes.Value) == 0 && !present {
 			return nil
 		}
-		into.block(number, held.Value)
+		into.block(number, bytes.Value)
 	case structure.Boolean:
-		held, ok := value.(dynamic.Boolean)
+		heldValue, ok := value.(dynamic.Boolean)
 		if !ok {
-			return mismatched("a bool", value)
+			return kindMismatchError("a bool", value)
 		}
-		if !held.Value && !present {
+		if !heldValue.Value && !present {
 			return nil
 		}
 		into.tag(number, varying)
-		into.varint(boolean(held.Value))
+		into.varint(boolean(heldValue.Value))
 	case structure.Integer:
 		return whole(into, number, shape, value, present)
 	case structure.Number:
 		return fractional(into, number, shape, value, present)
 	case structure.Timestamp:
-		held, ok := value.(dynamic.Timestamp)
+		timestamp, ok := value.(dynamic.Timestamp)
 		if !ok {
-			return mismatched("an instant", value)
+			return kindMismatchError("an instant", value)
 		}
-		if held.Value.IsZero() && !present {
+		if timestamp.Value.IsZero() && !present {
 			return nil
 		}
-		into.block(number, instant(held.Value))
+		into.block(number, instant(timestamp.Value))
 	default:
 		return fmt.Errorf("kind %v has no proto3 form", shape.Kind)
 	}
@@ -83,15 +83,15 @@ func whole(
 	value dynamic.Value,
 	present bool,
 ) error {
-	held, ok := value.(dynamic.Integer)
+	integer, ok := value.(dynamic.Integer)
 	if !ok {
-		return mismatched("a whole number", value)
+		return kindMismatchError("a whole number", value)
 	}
-	if held.Value == 0 && !present {
+	if integer.Value == 0 && !present {
 		return nil
 	}
 	into.tag(number, varying)
-	into.varint(varintOf(held.Value))
+	into.varint(varintOf(integer.Value))
 	return nil
 }
 
@@ -113,20 +113,20 @@ func fractional(
 	value dynamic.Value,
 	present bool,
 ) error {
-	held, ok := value.(dynamic.Number)
+	heldValue, ok := value.(dynamic.Number)
 	if !ok {
-		return mismatched("a number", value)
+		return kindMismatchError("a number", value)
 	}
-	if held.Value == 0 && !present {
+	if heldValue.Value == 0 && !present {
 		return nil
 	}
 	if shape.Precision == structure.Float32Bits {
 		into.tag(number, fourBytes)
-		into.float(float32(held.Value))
+		into.float(float32(heldValue.Value))
 		return nil
 	}
 	into.tag(number, eightBytes)
-	into.double(held.Value)
+	into.double(heldValue.Value)
 	return nil
 }
 
@@ -134,27 +134,27 @@ func fractional(
 func packedOne(into *writer, shape structure.Scalar, value dynamic.Value) error {
 	switch shape.Kind {
 	case structure.Boolean:
-		held, ok := value.(dynamic.Boolean)
+		heldValue, ok := value.(dynamic.Boolean)
 		if !ok {
-			return mismatched("a bool", value)
+			return kindMismatchError("a bool", value)
 		}
-		into.varint(boolean(held.Value))
+		into.varint(boolean(heldValue.Value))
 	case structure.Integer:
-		held, ok := value.(dynamic.Integer)
+		integer, ok := value.(dynamic.Integer)
 		if !ok {
-			return mismatched("a whole number", value)
+			return kindMismatchError("a whole number", value)
 		}
-		into.varint(varintOf(held.Value))
+		into.varint(varintOf(integer.Value))
 	case structure.Number:
-		held, ok := value.(dynamic.Number)
+		number, ok := value.(dynamic.Number)
 		if !ok {
-			return mismatched("a number", value)
+			return kindMismatchError("a number", value)
 		}
 		if shape.Precision == structure.Float32Bits {
-			into.float(float32(held.Value))
+			into.float(float32(number.Value))
 			return nil
 		}
-		into.double(held.Value)
+		into.double(number.Value)
 	default:
 		return fmt.Errorf("kind %v is not packable", shape.Kind)
 	}
@@ -183,6 +183,6 @@ func boolean(value bool) uint64 {
 	return 0
 }
 
-func mismatched(wanted string, value dynamic.Value) error {
+func kindMismatchError(wanted string, value dynamic.Value) error {
 	return fmt.Errorf("the description says %s and the value is a %T", wanted, value)
 }

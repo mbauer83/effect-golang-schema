@@ -34,7 +34,7 @@ import (
 func Dynamic(node structure.Node) Schema[dynamic.Value] {
 	built := dynamicCodec(node)
 	if fault := Validate(built); fault != nil {
-		return faulted[dynamic.Value](node, fault)
+		return faultedSchema[dynamic.Value](node, fault)
 	}
 	// The description is kept exactly as it was given. Rebuilding it produced a
 	// codec, not a new description, and a projection has to see what the author
@@ -52,7 +52,7 @@ func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
 	case structure.Sequence:
 		return dynamicSequence(shape)
 	case structure.Mapping:
-		return dynamicMapping(shape)
+		return dynamicMapSchema(shape)
 	case structure.Union:
 		return dynamicUnion(shape)
 	case structure.Nullable:
@@ -60,7 +60,7 @@ func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
 	case structure.Reference:
 		return dynamicReference(shape)
 	default:
-		return faulted[dynamic.Value](node, fail("a description is required", nil))
+		return faultedSchema[dynamic.Value](node, fail("a description is required", nil))
 	}
 }
 
@@ -86,11 +86,11 @@ func DescribedField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 		fault:     Validate(described),
 		derivable: func(value dynamic.Value) bool { return heldBy(value, name) },
 		encode: func(value dynamic.Value, into Sink) error {
-			held, present := memberOf(value, name)
+			memberOfed, present := memberOf(value, name)
 			if !present {
 				return fail("required member is missing", nil)
 			}
-			return Encode(described, held, into)
+			return Encode(described, memberOfed, into)
 		},
 		decode: func(target *dynamic.Value, from Source) error {
 			decoded, err := Decode(described, from)
@@ -159,12 +159,12 @@ func heldBy(value dynamic.Value, name string) bool {
 
 // withMember adds a member to the object being built, which starts as nothing
 // because a decoder builds from a zero value.
-func withMember(target dynamic.Value, name string, held dynamic.Value) dynamic.Value {
+func withMember(target dynamic.Value, name string, value dynamic.Value) dynamic.Value {
 	object, isObject := target.(dynamic.Object)
 	if !isObject {
 		object = dynamic.Object{}
 	}
-	object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: held})
+	object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: value})
 	return object
 }
 

@@ -32,7 +32,7 @@ func readUnion(union structure.Union, bytes []byte) (dynamic.Value, error) {
 		known[variant.Number] = true
 	}
 
-	found, err := gathered(known, bytes)
+	found, err := readOccurrences(known, bytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", union.Name, err)
 	}
@@ -122,23 +122,23 @@ func readFractional(shape structure.Scalar, appearance occurrence) (dynamic.Valu
 // readInstant reads a google.protobuf.Timestamp: seconds in field 1 and
 // nanoseconds in field 2.
 func readInstant(bytes []byte) (dynamic.Value, error) {
-	found, err := gathered(map[int]bool{1: true, 2: true}, bytes)
+	found, err := readOccurrences(map[int]bool{1: true, 2: true}, bytes)
 	if err != nil {
 		return nil, err
 	}
 	seconds, nanos := int64(0), int64(0)
-	if held := found[1]; len(held) > 0 {
-		seconds = int64(held[len(held)-1].fixed)
+	if foundEntry := found[1]; len(foundEntry) > 0 {
+		seconds = int64(foundEntry[len(foundEntry)-1].fixed)
 	}
-	if held := found[2]; len(held) > 0 {
-		nanos = int64(held[len(held)-1].fixed)
+	if foundEntry := found[2]; len(foundEntry) > 0 {
+		nanos = int64(foundEntry[len(foundEntry)-1].fixed)
 	}
 	return dynamic.Timestamp{Value: time.Unix(seconds, nanos).UTC()}, nil
 }
 
-// unpacked reads the elements out of a packed field, which carries them with no
+// decodePacked reads the elements out of a packed field, which carries them with no
 // tags of their own.
-func unpacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error) {
+func decodePacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error) {
 	from := &reader{bytes: bytes}
 	elements := []dynamic.Value{}
 	for !from.done() {
@@ -154,17 +154,17 @@ func unpacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error) {
 func unpackedOne(from *reader, shape structure.Scalar) (dynamic.Value, error) {
 	switch {
 	case shape.Kind == structure.Boolean:
-		held, err := from.varint()
-		return dynamic.Boolean{Value: held != 0}, err
+		varint, err := from.varint()
+		return dynamic.Boolean{Value: varint != 0}, err
 	case shape.Kind == structure.Integer:
-		held, err := from.varint()
-		return dynamic.Integer{Value: int64(held)}, err
+		varint, err := from.varint()
+		return dynamic.Integer{Value: int64(varint)}, err
 	case shape.Precision == structure.Float32Bits:
-		held, err := from.fixed32()
-		return dynamic.Number{Value: float64(math.Float32frombits(held))}, err
+		fixed32, err := from.fixed32()
+		return dynamic.Number{Value: float64(math.Float32frombits(fixed32))}, err
 	default:
-		held, err := from.fixed64()
-		return dynamic.Number{Value: math.Float64frombits(held)}, err
+		fixed64, err := from.fixed64()
+		return dynamic.Number{Value: math.Float64frombits(fixed64)}, err
 	}
 }
 

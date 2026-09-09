@@ -56,11 +56,11 @@ type Movement interface{ isMovement() }
 // MovementSchema describes Movement. It is generated from its description.
 var MovementSchema = schema.OneOf[Movement]("Movement",
 	schema.VariantOf("received", ReceivedSchema,
-		func(value Movement) (Received, bool) { held, is := value.(Received); return held, is },
-		func(held Received) Movement { return held }).Documented("stock arriving"),
+		func(value Movement) (Received, bool) { narrowed, is := value.(Received); return narrowed, is },
+		func(variant Received) Movement { return variant }).Documented("stock arriving"),
 	schema.VariantOf("shipped", ShippedSchema,
-		func(value Movement) (Shipped, bool) { held, is := value.(Shipped); return held, is },
-		func(held Shipped) Movement { return held }).Documented("stock leaving"),
+		func(value Movement) (Shipped, bool) { narrowed, is := value.(Shipped); return narrowed, is },
+		func(variant Shipped) Movement { return variant }).Documented("stock leaving"),
 ).Documented("a change in what is stocked")
 
 // Received is generated from its description.

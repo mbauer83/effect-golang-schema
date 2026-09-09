@@ -34,7 +34,7 @@ func UUID() Schema[string] {
 // something. A display name is refused: "Ada <ada@example.test>" is a mailbox,
 // not an address, and a field asking for an address means the address.
 func Email() Schema[string] {
-	return checked(Formatted("email"), func(value string) error {
+	return withCheck(Formatted("email"), func(value string) error {
 		parsed, err := mail.ParseAddress(value)
 		if err != nil {
 			return fail("is not an email address", err)
@@ -51,7 +51,7 @@ func Email() Schema[string] {
 // A relative reference is a legitimate thing and a different one, so it has its
 // own constructor rather than being quietly admitted here.
 func URI() Schema[string] {
-	return checked(Formatted("uri"), func(value string) error {
+	return withCheck(Formatted("uri"), func(value string) error {
 		parsed, err := url.Parse(value)
 		if err != nil {
 			return fail("is not a URI", err)
@@ -79,7 +79,7 @@ func URL() Schema[string] {
 
 // URIReference admits a URI or a relative reference.
 func URIReference() Schema[string] {
-	return checked(Formatted("uri-reference"), func(value string) error {
+	return withCheck(Formatted("uri-reference"), func(value string) error {
 		if _, err := url.Parse(value); err != nil {
 			return fail("is not a URI reference", err)
 		}
@@ -99,14 +99,14 @@ func Hostname() Schema[string] {
 
 // IPv4 admits a dotted-quad address.
 func IPv4() Schema[string] {
-	return checked(Formatted("ipv4"), func(value string) error {
+	return withCheck(Formatted("ipv4"), func(value string) error {
 		return addressOf(value, 4, "is not an IPv4 address")
 	})
 }
 
 // IPv6 admits an IPv6 address, in any of its written forms.
 func IPv6() Schema[string] {
-	return checked(Formatted("ipv6"), func(value string) error {
+	return withCheck(Formatted("ipv6"), func(value string) error {
 		return addressOf(value, 16, "is not an IPv6 address")
 	})
 }
@@ -125,14 +125,14 @@ func addressOf(value string, width int, reason string) error {
 	return nil
 }
 
-// checked narrows a schema with a rule the description cannot state.
+// withCheck narrows a schema with a rule the description cannot state.
 //
-// The value is checked in both directions, as a constraint is, but nothing is
+// The value is withCheck in both directions, as a constraint is, but nothing is
 // added to the structure: there is no keyword for "parses as an address", and
 // inventing one would say something no other projection could read.
-func checked[A any](inner Schema[A], check func(A) error) Schema[A] {
+func withCheck[A any](inner Schema[A], check func(A) error) Schema[A] {
 	if fault := Validate(inner); fault != nil {
-		return faulted[A](inner.node, fault)
+		return faultedSchema[A](inner.node, fault)
 	}
 	return of(
 		inner.node,

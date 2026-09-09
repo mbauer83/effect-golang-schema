@@ -56,30 +56,30 @@ func (schema Schema[A]) Constrained(constraints ...Constraint[A]) Schema[A] {
 	narrowed := schema
 	for _, constraint := range constraints {
 		if constraint.fault != nil {
-			return faulted[A](schema.node, constraint.fault)
+			return faultedSchema[A](schema.node, constraint.fault)
 		}
-		narrowed = constrained(narrowed, constraint.described, constraint.check)
+		narrowed = applyConstraint(narrowed, constraint.described, constraint.check)
 	}
 	return narrowed
 }
 
-func narrowing[A any](described structure.Constraint, check func(A) error) Constraint[A] {
+func newConstraint[A any](described structure.Constraint, check func(A) error) Constraint[A] {
 	return Constraint[A]{described: described, check: check}
 }
 
-// constrained records the constraint in the description and checks it in both
+// applyConstraint records the constraint in the description and checks it in both
 // directions.
-func constrained[A any](
+func applyConstraint[A any](
 	inner Schema[A],
 	constraint structure.Constraint,
 	check func(A) error,
 ) Schema[A] {
 	if fault := Validate(inner); fault != nil {
-		return faulted[A](inner.node, fault)
+		return faultedSchema[A](inner.node, fault)
 	}
 	node, applies := withConstraint(inner.node, constraint)
 	if !applies {
-		return faulted[A](inner.node,
+		return faultedSchema[A](inner.node,
 			fail("a constraint applies to a scalar or a list, and this is neither", nil))
 	}
 	return of(

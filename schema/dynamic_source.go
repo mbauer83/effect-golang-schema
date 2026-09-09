@@ -59,11 +59,11 @@ func (source *dynamicSource) Integer() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch held := value.(type) {
+	switch inner := value.(type) {
 	case dynamic.Integer:
-		return held.Value, nil
+		return inner.Value, nil
 	case dynamic.Number:
-		if whole := int64(held.Value); float64(whole) == held.Value {
+		if whole := int64(inner.Value); float64(whole) == inner.Value {
 			return whole, nil
 		}
 		return 0, fail("expected a whole number", nil)
@@ -79,24 +79,24 @@ func (source *dynamicSource) Number() (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	switch held := value.(type) {
+	switch shape := value.(type) {
 	case dynamic.Number:
-		return held.Value, nil
+		return shape.Value, nil
 	case dynamic.Integer:
-		return float64(held.Value), nil
+		return float64(shape.Value), nil
 	default:
 		return 0, fail("expected a number", nil)
 	}
 }
 
 func (source *dynamicSource) Boolean() (bool, error) {
-	held, err := taken[dynamic.Boolean](source, "a boolean")
-	return held.Value, err
+	takenEntry, err := taken[dynamic.Boolean](source, "a boolean")
+	return takenEntry.Value, err
 }
 
 func (source *dynamicSource) Bytes() ([]byte, error) {
-	held, err := taken[dynamic.Bytes](source, "a byte string")
-	return held.Value, err
+	takenEntry, err := taken[dynamic.Bytes](source, "a byte string")
+	return takenEntry.Value, err
 }
 
 func (source *dynamicSource) Timestamp() (time.Time, error) {
@@ -170,9 +170,9 @@ func taken[A dynamic.Value](source *dynamicSource, wanted string) (A, error) {
 	if err != nil {
 		return missing, err
 	}
-	held, is := value.(A)
+	a, is := value.(A)
 	if !is {
 		return missing, fail("expected "+wanted, nil)
 	}
-	return held, nil
+	return a, nil
 }

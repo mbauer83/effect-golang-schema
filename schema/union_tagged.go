@@ -34,7 +34,7 @@ func OneOfBy[A any](name string, discriminator string, variants ...Variant[A]) S
 		Variants:      describeVariants(variants),
 	}
 	if fault := firstTaggedFault(discriminator, variants); fault != nil {
-		return faulted[A](node, fault)
+		return faultedSchema[A](node, fault)
 	}
 
 	byName := make(map[string]Variant[A], len(variants))
@@ -169,11 +169,11 @@ func decodeTagged[A any](
 }
 
 func namedBy(object dynamic.Object, discriminator string) (string, error) {
-	held, present := object.Member(discriminator)
+	member, present := object.Member(discriminator)
 	if !present {
 		return "", fail("carries no "+discriminator+" to say which variant it is", nil)
 	}
-	text, isText := held.(dynamic.Text)
+	text, isText := member.(dynamic.Text)
 	if !isText {
 		return "", within(discriminator, fail("is not text", nil))
 	}
@@ -181,11 +181,11 @@ func namedBy(object dynamic.Object, discriminator string) (string, error) {
 }
 
 func without(object dynamic.Object, name string) dynamic.Value {
-	kept := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
+	makeed := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
 	for _, field := range object.Fields {
 		if field.Name != name {
-			kept.Fields = append(kept.Fields, field)
+			makeed.Fields = append(makeed.Fields, field)
 		}
 	}
-	return kept
+	return makeed
 }

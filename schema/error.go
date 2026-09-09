@@ -58,12 +58,12 @@ func fail(reason string, cause error) error {
 	return &Error{Reason: reason, Err: cause}
 }
 
-// refused reports a value a conversion would not accept.
+// refusalError reports a value a conversion would not accept.
 //
 // The conversion's own message follows the reason rather than replacing it, so
 // a path can still be prefixed as the failure unwinds and errors.Is still
 // reaches whatever sentinel the refinement used.
-func refused(err error) error {
+func refusalError(err error) error {
 	var failure *Error
 	if errors.As(err, &failure) {
 		return err

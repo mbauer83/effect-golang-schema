@@ -149,16 +149,16 @@ func OfTimestamp(value time.Time) Value { return Timestamp{Value: value} }
 // writes: RFC 3339, and the space-separated form every SQL dialect prints.
 // Anything else is not an instant, and saying so beats guessing at a date.
 func TimestampOf(value Value) (time.Time, bool) {
-	if held, isTimestamp := value.(Timestamp); isTimestamp {
-		return held.Value, true
+	if timestamp, isTimestamp := value.(Timestamp); isTimestamp {
+		return timestamp.Value, true
 	}
 	text, isText := TextOf(value)
 	if !isText {
 		return time.Time{}, false
 	}
 	for _, layout := range instantLayouts {
-		if held, err := time.Parse(layout, text); err == nil {
-			return held, true
+		if parsed, err := time.Parse(layout, text); err == nil {
+			return parsed, true
 		}
 	}
 	return time.Time{}, false
@@ -185,14 +185,14 @@ var instantLayouts = []string{
 // are not valid UTF-8 are not text, so a binary column read as text is a
 // failure here and not a mangled string somewhere later.
 func TextOf(value Value) (string, bool) {
-	switch held := value.(type) {
+	switch inner := value.(type) {
 	case Text:
-		return held.Value, true
+		return inner.Value, true
 	case Bytes:
-		if !utf8.Valid(held.Value) {
+		if !utf8.Valid(inner.Value) {
 			return "", false
 		}
-		return string(held.Value), true
+		return string(inner.Value), true
 	default:
 		return "", false
 	}

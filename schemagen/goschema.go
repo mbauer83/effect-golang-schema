@@ -105,8 +105,8 @@ func sequenceExpression(shape structure.Sequence) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	element, named := elementType(shape.Element)
-	if !named && len(shape.Constraints) > 0 {
+	element, elementTypeed := elementType(shape.Element)
+	if !elementTypeed && len(shape.Constraints) > 0 {
 		return "", errors.New(
 			"a bound on a list of that shape needs the element's Go type named, " +
 				"and this description does not carry it")
@@ -146,18 +146,18 @@ func constrainExpression(
 // carries it and there is no longer an inner schema for the compiler to read
 // it from. A length does not: it is only ever about text.
 func constraintCall(constraint structure.Constraint, holds string) (string, error) {
-	named := func(call string, value string) string {
+	funced := func(call string, value string) string {
 		return "schema." + call + "[" + holds + "](" + value + ")"
 	}
 	switch narrowed := constraint.(type) {
 	case structure.AtLeast:
-		return named("AtLeast", bound(narrowed.Value)), nil
+		return funced("AtLeast", bound(narrowed.Value)), nil
 	case structure.AtMost:
-		return named("AtMost", bound(narrowed.Value)), nil
+		return funced("AtMost", bound(narrowed.Value)), nil
 	case structure.Above:
-		return named("Above", bound(narrowed.Value)), nil
+		return funced("Above", bound(narrowed.Value)), nil
 	case structure.Below:
-		return named("Below", bound(narrowed.Value)), nil
+		return funced("Below", bound(narrowed.Value)), nil
 	case structure.MinLength:
 		return "schema.MinLength(" + strconv.Itoa(narrowed.Value) + ")", nil
 	case structure.MaxLength:
@@ -165,9 +165,9 @@ func constraintCall(constraint structure.Constraint, holds string) (string, erro
 	case structure.Pattern:
 		return "schema.Matching(" + strconv.Quote(narrowed.Expression) + ")", nil
 	case structure.MinItems:
-		return named("MinItems", strconv.Itoa(narrowed.Value)), nil
+		return funced("MinItems", strconv.Itoa(narrowed.Value)), nil
 	case structure.MaxItems:
-		return named("MaxItems", strconv.Itoa(narrowed.Value)), nil
+		return funced("MaxItems", strconv.Itoa(narrowed.Value)), nil
 	default:
 		return "", errors.New("this constraint has no constructor")
 	}
@@ -185,11 +185,11 @@ func elementType(node structure.Node) (string, bool) {
 		_, _, holds := baseExpression(shape)
 		return holds, true
 	case structure.Sequence:
-		within, named := elementType(shape.Element)
-		return "[]" + within, named
+		within, elementTypeed := elementType(shape.Element)
+		return "[]" + within, elementTypeed
 	case structure.Nullable:
-		within, named := elementType(shape.Inner)
-		return "*" + within, named
+		within, elementTypeed := elementType(shape.Inner)
+		return "*" + within, elementTypeed
 	default:
 		return "", false
 	}

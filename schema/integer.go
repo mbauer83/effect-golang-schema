@@ -25,32 +25,32 @@ import (
 
 // Int8 describes a signed 8-bit integer.
 func Int8() Schema[int8] {
-	return narrowed[int8](structure.Int8Bits, math.MinInt8, math.MaxInt8)
+	return narrowInteger[int8](structure.Int8Bits, math.MinInt8, math.MaxInt8)
 }
 
 // Int16 describes a signed 16-bit integer.
 func Int16() Schema[int16] {
-	return narrowed[int16](structure.Int16Bits, math.MinInt16, math.MaxInt16)
+	return narrowInteger[int16](structure.Int16Bits, math.MinInt16, math.MaxInt16)
 }
 
 // Int32 describes a signed 32-bit integer.
 func Int32() Schema[int32] {
-	return narrowed[int32](structure.Int32Bits, math.MinInt32, math.MaxInt32)
+	return narrowInteger[int32](structure.Int32Bits, math.MinInt32, math.MaxInt32)
 }
 
 // Uint8 describes an unsigned 8-bit integer.
 func Uint8() Schema[uint8] {
-	return narrowed[uint8](structure.Uint8Bits, 0, math.MaxUint8)
+	return narrowInteger[uint8](structure.Uint8Bits, 0, math.MaxUint8)
 }
 
 // Uint16 describes an unsigned 16-bit integer.
 func Uint16() Schema[uint16] {
-	return narrowed[uint16](structure.Uint16Bits, 0, math.MaxUint16)
+	return narrowInteger[uint16](structure.Uint16Bits, 0, math.MaxUint16)
 }
 
 // Uint32 describes an unsigned 32-bit integer.
 func Uint32() Schema[uint32] {
-	return narrowed[uint32](structure.Uint32Bits, 0, math.MaxUint32)
+	return narrowInteger[uint32](structure.Uint32Bits, 0, math.MaxUint32)
 }
 
 // Uint describes a platform unsigned integer.
@@ -60,13 +60,13 @@ func Uint32() Schema[uint32] {
 // expressed at all and a schema that claimed otherwise would be lying about
 // what it can carry.
 func Uint() Schema[uint] {
-	return narrowed[uint](structure.UintBits, 0, math.MaxInt64)
+	return narrowInteger[uint](structure.UintBits, 0, math.MaxInt64)
 }
 
 // Uint64 describes an unsigned 64-bit integer, bounded as Uint is and for the
 // same reason.
 func Uint64() Schema[uint64] {
-	return narrowed[uint64](structure.Uint64Bits, 0, math.MaxInt64)
+	return narrowInteger[uint64](structure.Uint64Bits, 0, math.MaxInt64)
 }
 
 // Float32 describes a 32-bit floating-point number.
@@ -92,9 +92,9 @@ type whole interface {
 	~int8 | ~int16 | ~int32 | ~uint8 | ~uint16 | ~uint32 | ~uint | ~uint64
 }
 
-// narrowed builds a schema for a Go integer narrower than the wire's, refusing
+// narrowInteger builds a schema for a Go integer narrower than the wire's, refusing
 // a value the type cannot hold and recording the range it implies.
-func narrowed[A whole](precision structure.Precision, lowest int64, highest int64) Schema[A] {
+func narrowInteger[A whole](precision structure.Precision, lowest int64, highest int64) Schema[A] {
 	converted := TransformOrFail(Int64(),
 		func(value int64) (A, error) {
 			if value < lowest || value > highest {
@@ -126,12 +126,12 @@ func constrainedFloat(
 func withPrecision[A any](shape Schema[A], precision structure.Precision) Schema[A] {
 	scalar, isScalar := shape.node.(structure.Scalar)
 	if !isScalar {
-		return faulted[A](shape.node, fail("a precision applies to a scalar", nil))
+		return faultedSchema[A](shape.node, fail("a precision applies to a scalar", nil))
 	}
 	// The wire kind is derived from the width, so the two cannot be set to
 	// disagree: a width on text is a description contradicting itself.
 	if kind, numeric := precision.Numeric(); !numeric || kind != scalar.Kind {
-		return faulted[A](shape.node,
+		return faultedSchema[A](shape.node,
 			fail("a width of "+precision.String()+" does not describe "+scalar.Kind.String(), nil))
 	}
 	scalar.Precision = precision

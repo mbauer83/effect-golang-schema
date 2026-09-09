@@ -66,24 +66,24 @@ type shape struct {
 }
 
 func (projection *projector) shape(node structure.Node) (shape, error) {
-	switch held := node.(type) {
+	switch heldValue := node.(type) {
 	case structure.Scalar:
-		return projection.scalar(held)
+		return projection.scalar(heldValue)
 	case structure.Object:
-		name, err := projection.message(held)
+		name, err := projection.message(heldValue)
 		return shape{name: name}, err
 	case structure.Union:
-		name, err := projection.oneOf(held)
+		name, err := projection.oneOf(heldValue)
 		return shape{name: name}, err
 	case structure.Reference:
-		name, err := projection.reference(held)
+		name, err := projection.reference(heldValue)
 		return shape{name: name}, err
 	case structure.Sequence:
-		return projection.sequence(held)
+		return projection.sequence(heldValue)
 	case structure.Mapping:
-		return projection.mapping(held)
+		return projection.projectMapping(heldValue)
 	case structure.Nullable:
-		inner, err := projection.shape(held.Inner)
+		inner, err := projection.shape(heldValue.Inner)
 		inner.nullable = true
 		return inner, err
 	default:
@@ -105,11 +105,11 @@ func (projection *projector) sequence(sequence structure.Sequence) (shape, error
 	return shape{
 		name:     element.name,
 		repeated: true,
-		notes:    append(element.notes, noted(sequence.Constraints)...),
+		notes:    append(element.notes, constraintNotes(sequence.Constraints)...),
 	}, nil
 }
 
-func (projection *projector) mapping(mapping structure.Mapping) (shape, error) {
+func (projection *projector) projectMapping(mapping structure.Mapping) (shape, error) {
 	key, isScalar := mapping.Key.(structure.Scalar)
 	if !isScalar || key.Kind != structure.Text {
 		// proto3 permits an integral or string key and nothing else. The

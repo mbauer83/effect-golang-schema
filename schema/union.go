@@ -41,11 +41,11 @@ func VariantOf[A, B any](
 			return matched
 		},
 		encode: func(value A, into Sink) error {
-			held, matched := narrow(value)
+			narrowed, matched := narrow(value)
 			if !matched {
 				return fail("the value is not the "+name+" variant", nil)
 			}
-			return Encode(shape, held, into)
+			return Encode(shape, narrowed, into)
 		},
 		decode: func(from Source) (A, error) {
 			decoded, err := Decode(shape, from)
@@ -94,7 +94,7 @@ func (variant Variant[A]) Numbered(number int) Variant[A] {
 func OneOf[A any](name string, variants ...Variant[A]) Schema[A] {
 	node := structure.Union{Name: name, Variants: describeVariants(variants)}
 	if fault := firstVariantFault(variants); fault != nil {
-		return faulted[A](node, fault)
+		return faultedSchema[A](node, fault)
 	}
 
 	byName := make(map[string]Variant[A], len(variants))
