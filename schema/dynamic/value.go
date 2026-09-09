@@ -135,6 +135,47 @@ func OfBytes(value []byte) Value { return Bytes{Value: value} }
 // OfTimestamp makes an instant.
 func OfTimestamp(value time.Time) Value { return Timestamp{Value: value} }
 
+// TimestampOf reads a value as an instant, and says whether it was.
+//
+// Text counts, when the text is an instant. This exists for the same reason
+// TextOf tolerates bytes: a source that has no instant of its own carries one
+// as characters, and which representation it chose is the source's business
+// rather than the value's meaning. SQLite is the one this was written for --
+// it has no date type at all, so a timestamptz column projected onto it is a
+// text column, and a value written as an instant came back as a string that
+// nothing would read.
+//
+// The layouts are the ones a source that stores an instant as text actually
+// writes: RFC 3339, and the space-separated form every SQL dialect prints.
+// Anything else is not an instant, and saying so beats guessing at a date.
+func TimestampOf(value Value) (time.Time, bool) {
+	if held, isTimestamp := value.(Timestamp); isTimestamp {
+		return held.Value, true
+	}
+	text, isText := TextOf(value)
+	if !isText {
+		return time.Time{}, false
+	}
+	for _, layout := range instantLayouts {
+		if held, err := time.Parse(layout, text); err == nil {
+			return held, true
+		}
+	}
+	return time.Time{}, false
+}
+
+// instantLayouts are tried in order, widest first: a value that parses as more
+// than one of them means the same instant under each.
+var instantLayouts = []string{
+	time.RFC3339Nano,
+	time.RFC3339,
+	"2006-01-02 15:04:05.999999999-07:00",
+	"2006-01-02 15:04:05.999999999Z07:00",
+	"2006-01-02 15:04:05.999999999",
+	"2006-01-02 15:04:05",
+	"2006-01-02",
+}
+
 // TextOf reads a value as text, and says whether it was.
 //
 // A byte string counts, when the bytes are text. Several sources hold

@@ -100,8 +100,15 @@ func (source *dynamicSource) Bytes() ([]byte, error) {
 }
 
 func (source *dynamicSource) Timestamp() (time.Time, error) {
-	held, err := taken[dynamic.Timestamp](source, "a timestamp")
-	return held.Value, err
+	value, err := source.take()
+	if err != nil {
+		return time.Time{}, err
+	}
+	instant, isInstant := dynamic.TimestampOf(value)
+	if !isInstant {
+		return time.Time{}, fail("expected a timestamp", nil)
+	}
+	return instant, nil
 }
 
 // Null consumes the value only when it is one, because asking is not the same

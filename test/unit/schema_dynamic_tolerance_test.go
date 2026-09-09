@@ -11,6 +11,7 @@ package unit
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mbauer83/effect-golang-schema/schema"
 	"github.com/mbauer83/effect-golang-schema/schema/dynamic"
@@ -102,4 +103,62 @@ func TestTextOfSaysWhichValuesAreText(t *testing.T) {
 			t.Errorf("%#v read as text %q", held, text)
 		}
 	}
+}
+
+func TestATimestampReadsTextWhenTheSourceHasNoInstantOfItsOwn(t *testing.T) {
+	// SQLite has no date type at all, so an instant projected onto it is a
+	// text column: a value written as an instant came back as a string that
+	// nothing would read, and a whole dialect could not round-trip a
+	// timestamp. Which representation a source chose is its business rather
+	// than the value's meaning, which is the same argument that lets text
+	// read a bytes value.
+	wanted := time.Date(2026, 9, 9, 21, 30, 15, 0, time.UTC)
+	described := oneField("at", schema.Time())
+
+	for name, carried := range map[string]dynamic.Value{
+		"an instant":               dynamic.OfTimestamp(wanted),
+		"RFC 3339":                 dynamic.OfText("2026-09-09T21:30:15Z"),
+		"RFC 3339 with a fraction": dynamic.OfText("2026-09-09T21:30:15.000Z"),
+		"the form SQL prints":      dynamic.OfText("2026-09-09 21:30:15+00:00"),
+		"bytes holding one":        dynamic.OfBytes([]byte("2026-09-09T21:30:15Z")),
+	} {
+		read, err := schema.FromDynamic(described, rowOf("at", carried))
+		if err != nil {
+			t.Fatalf("expected %s to read as an instant, got %v", name, err)
+		}
+		held, isInstant := dynamic.TimestampOf(readField(t, read, "at"))
+		if !isInstant || !held.Equal(wanted) {
+			t.Fatalf("expected %s to be %v, got %v", name, wanted, held)
+		}
+	}
+}
+
+func TestWhatIsNotAnInstantIsRefusedRatherThanGuessedAt(t *testing.T) {
+	described := oneField("at", schema.Time())
+
+	for name, carried := range map[string]dynamic.Value{
+		"a number":         dynamic.OfInteger(1757451015),
+		"a word":           dynamic.OfText("yesterday"),
+		"another calendar": dynamic.OfText("09/09/2026"),
+		"nothing":          dynamic.OfText(""),
+	} {
+		if _, err := schema.FromDynamic(described, rowOf("at", carried)); err == nil {
+			t.Fatalf("expected %s to be refused", name)
+		}
+	}
+}
+
+// readField is one member of a decoded row, which these tests compare against
+// the instant they wrote.
+func readField(t *testing.T, row dynamic.Value, name string) dynamic.Value {
+	t.Helper()
+	object, isObject := row.(dynamic.Object)
+	if !isObject {
+		t.Fatalf("expected a row, got %#v", row)
+	}
+	held, present := object.Member(name)
+	if !present {
+		t.Fatalf("expected a %q member, got %#v", name, row)
+	}
+	return held
 }
