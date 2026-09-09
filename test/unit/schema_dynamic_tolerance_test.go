@@ -162,3 +162,34 @@ func readField(t *testing.T, row dynamic.Value, name string) dynamic.Value {
 	}
 	return held
 }
+
+func TestAnOptionalFieldReadsAnAbsenceAsWellAsDeclaringOne(t *testing.T) {
+	// Optionality that holds in one direction is not optionality. A field
+	// marked optional described a nullable column and then refused to read
+	// one, which is the shape the bug had: a store wrote NULL exactly where
+	// the description said it could, and the description would not read its
+	// own row back.
+	described := schema.Struct[dynamic.Value]("Row",
+		schema.DescribedField("held", schema.Time()).Optional())
+
+	read, err := schema.FromDynamic(described, rowOf("held", dynamic.Absent{}))
+	if err != nil {
+		t.Fatalf("expected an absence to read, got %v", err)
+	}
+	if object, isObject := read.(dynamic.Object); isObject {
+		if _, present := object.Member("held"); present {
+			t.Fatal("expected the member to stay absent rather than becoming a zero")
+		}
+	}
+
+	// And a value still reads as itself.
+	wanted := time.Date(2026, 9, 9, 21, 30, 0, 0, time.UTC)
+	read, err = schema.FromDynamic(described, rowOf("held", dynamic.OfTimestamp(wanted)))
+	if err != nil {
+		t.Fatalf("expected a value to read, got %v", err)
+	}
+	held, isInstant := dynamic.TimestampOf(readField(t, read, "held"))
+	if !isInstant || !held.Equal(wanted) {
+		t.Fatalf("expected %v, got %v", wanted, held)
+	}
+}
