@@ -80,31 +80,6 @@ type Object struct {
 	Fields []Field
 }
 
-// Identity is the field that distinguishes one of these from another, if the
-// description names one.
-func (object Object) Identity() (Field, bool) {
-	for _, field := range object.Fields {
-		if field.Identity {
-			return field, true
-		}
-	}
-	return Field{}, false
-}
-
-// IsEntity reports whether this object is a thing in its own right rather than
-// a value belonging to whatever holds it.
-//
-// It is derived from having an identity rather than declared separately, which
-// is a deliberate simplification: an object with an identity is an entity and
-// one without is a value, so a separate marker could only ever agree with the
-// identity or contradict it. An address inside a customer is a value and lives
-// in the customer's row; an order line has an identity and lives in its own
-// table.
-func (object Object) IsEntity() bool {
-	_, identity := object.Identity()
-	return identity
-}
-
 // Field is one member of an object.
 type Field struct {
 	Name string
