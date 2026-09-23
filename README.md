@@ -31,6 +31,7 @@ that has never seen this module.
 | [Schema](docs/reference/schema.md) | usable: shapes, sums (both taggings), constraints, formats, JSON, descriptions with no Go type |
 | JSON Schema projection | usable (see the schema reference) |
 | [protobuf: proto3 projection and wire codec](docs/reference/protobuf.md) | usable |
+| [TypeScript: Effect Schema for a frontend](docs/reference/typescript.md) | usable |
 | [Derived shapes: create, update, select](docs/reference/variant.md) | usable |
 | Generation from a description | usable |
 
@@ -41,6 +42,7 @@ schema/                     Schema[A]: shapes, codecs, refinement
   schema/structure/         the description a projection walks
   schema/dynamic/           the value a description carries when there is no Go type
   schema/jsonschema/        the JSON Schema 2020-12 projection
+  schema/typescript/        the TypeScript projection: Effect Schema values and types
   schema/protobuf/          the proto3 projection and the protobuf wire codec
   schema/variant/           the create, update and select shapes one description has
 schemagen/                  writes the Go types a description implies
