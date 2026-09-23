@@ -9,7 +9,7 @@ require (
 	// Nothing in the module itself needs either, which is what keeps this
 	// layer free of a dependency every user would acquire.
 	github.com/bufbuild/protocompile v0.14.1
-	github.com/mbauer83/effect-golang v0.3.0
+	github.com/mbauer83/effect-golang v0.4.0
 	// A JSON Schema validator, used only by the tests: the projection is
 	// checked against a parser that has never seen this module.
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
@@ -17,7 +17,7 @@ require (
 )
 
 require (
-	github.com/mbauer83/effect-golang/tools/effectgo v0.3.0 // indirect
+	github.com/mbauer83/effect-golang/tools/effectgo v0.4.0 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
