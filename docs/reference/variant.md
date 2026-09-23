@@ -8,9 +8,9 @@ row rather than being part of its new value.
 
 ```go
 variant.Select(node)              // the whole thing, unchanged
-variant.Create(node)              // what a caller supplies to make one
+variant.Insert(node)              // what a caller supplies to make one
 variant.Update(node)              // what a caller supplies to change one
-variant.CreateWithEntities(node)  // the aggregate, created in one act
+variant.InsertWithEntities(node)  // the aggregate, inserted in one act
 variant.UpdateWithEntities(node)
 ```
 
@@ -39,7 +39,7 @@ answer.
 
 They **compose**, and the composition is the distinction other libraries spell
 with two separate concepts: an identity the application generates is `Identity`
-alone and appears in a create shape; one the database generates is both and does
+alone and appears in an insert shape; one the database generates is both and does
 not. Effect needs `GeneratedByApp` and `GeneratedByDb` for the same two cases.
 
 ## An entity is derived, not declared
@@ -63,14 +63,14 @@ an identity and lives in its own table.
 | | identity | computed | nested entities | requiredness |
 |---|---|---|---|---|
 | `Select` | kept | kept | kept | as declared |
-| `Create` | kept if not computed | dropped | dropped | as declared |
-| `CreateWithEntities` | kept if not computed | dropped | kept, derived the same way | as declared |
+| `Insert` | kept if not computed | dropped | dropped | as declared |
+| `InsertWithEntities` | kept if not computed | dropped | kept, derived the same way | as declared |
 | `Update` | dropped | dropped | dropped | **everything optional** |
 | `UpdateWithEntities` | dropped | dropped | kept, derived the same way | **everything optional** |
 
 An update shape makes every remaining field optional, because a change says what
 is *changing* and a field nobody mentioned is a field nobody is changing. That
-is the whole difference between an update shape and a create shape with the
+is the whole difference between an update shape and an insert shape with the
 identity removed — and it is why they are two functions.
 
 Nested entities are dropped by default: they have identities of their own, so

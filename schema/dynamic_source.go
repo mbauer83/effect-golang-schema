@@ -14,7 +14,7 @@ import (
 
 // dynamicSource reads a value as a schema pulls it.
 //
-// pending is a stack rather than a cursor because the schema drives: it asks
+// queue is a stack rather than a cursor because the schema drives: it asks
 // for one value at a time, and a container hands its members over to be asked
 // about in turn.
 type dynamicSource struct {

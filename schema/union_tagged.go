@@ -26,7 +26,7 @@ import (
 // which is not something to leave to chance.
 //
 // Every variant must be an object, because a field inside it is where the name
-// goes. Variants are tried in declared order on encode, as OneOf's are.
+// goes. Variants are tried in declared order on encode, as Union's are.
 func TaggedUnion[A any](name string, discriminator string, variants ...Variant[A]) Schema[A] {
 	node := structure.Union{
 		Name:          name,

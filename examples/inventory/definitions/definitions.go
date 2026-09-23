@@ -2,7 +2,7 @@
 // truth for them.
 //
 // These are schemas, not a separate declaration language: the same Struct, the
-// same OneOf, the same constraints. What they leave out is the getters and
+// same Union, the same constraints. What they leave out is the getters and
 // setters, which are the only part of a field declaration that needs a Go type
 // -- so a description compiles before the type it will become exists, and the
 // Go types are generated from it rather than written a second time.

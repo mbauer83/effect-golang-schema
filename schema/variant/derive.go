@@ -26,13 +26,13 @@ func Select(node structure.Node) structure.Node {
 // separate marks that compose.
 //
 // Nested entities are left out. They have identities of their own, so they are
-// things rather than parts, and creating one is its own act. CreateWithEntities
+// things rather than parts, and creating one is its own act. InsertWithEntities
 // is for the caller that means to create the whole aggregate at once.
 func Insert(node structure.Node) (structure.Node, error) {
 	return deriveNode(node, keepPolicy{keepIdentity: true, reachIntoEntities: false})
 }
 
-// InsertWithEntities is Create for an aggregate created in one act: the root and
+// InsertWithEntities is Insert for an aggregate created in one act: the root and
 // the entities beneath it together.
 //
 // It is a separate function rather than a flag because the two are different
@@ -51,7 +51,7 @@ func InsertWithEntities(node structure.Node) (structure.Node, error) {
 //
 // Every remaining field becomes optional, because a change describes what is
 // changing and a field nobody mentioned is a field nobody is changing. That is
-// the difference between an update shape and a create shape with the identity
+// the difference between an update shape and an insert shape with the identity
 // removed, and it is why this is not that.
 func Update(node structure.Node) (structure.Node, error) {
 	return deriveNode(node, keepPolicy{keepIdentity: false, reachIntoEntities: false, partial: true})

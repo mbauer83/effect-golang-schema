@@ -40,7 +40,7 @@ before the type it will become exists — or loaded from elsewhere, or read back
 out of another schema — has no `A`, and it is still worth validating,
 transcoding, inspecting and composing.
 
-It is the same vocabulary — the same `Struct`, the same `OneOf` — minus the
+It is the same vocabulary — the same `Struct`, the same `Union` — minus the
 accessors:
 
 ```go
@@ -204,7 +204,7 @@ what those are for; `examples/catalog` does it that way.
 | In the description | In the generated code |
 |---|---|
 | a named `Struct` | a Go struct, and `NameSchema` binding it |
-| a named `OneOf` | an interface with an unexported marker, a struct per variant, and `NameSchema` |
+| a named `Union` | an interface with an unexported marker, a struct per variant, and `NameSchema` |
 | `.Optional()` | a pointer field with `,omitempty` |
 | a stated width | that Go type — `uint16`, `float32` — rather than the widest one the wire could carry |
 | a member's prose | the field's doc comment |
@@ -231,7 +231,7 @@ changed without a regeneration fails there rather than at the next request.
 | `Map(value)` | string-keyed values; encoding sorts the keys |
 | `Nullable(inner)` | present and null, as a pointer -- not the same as an absent field |
 | `Struct(name, fields...)` | a fixed set of named fields |
-| `OneOf(name, variants...)` | a choice between named alternatives |
+| `Union(name, variants...)` | a choice between named alternatives |
 | `Suspend(resolve)` | a schema not built yet: itself, or another not yet written |
 
 `FieldOf` declares a required field and `OptionalFieldOf` one that may be
@@ -289,11 +289,11 @@ would be telling a client about Go.
 ## Sums
 
 Go models a sum as an interface with an unexported marker and a concrete type
-per alternative. `OneOf` describes one, with a `VariantOf` per alternative whose
+per alternative. `Union` describes one, with a `VariantOf` per alternative whose
 narrowing function is the type assertion:
 
 ```go
-var shapeSchema = schema.OneOf[Shape]("Shape",
+var shapeSchema = schema.Union[Shape]("Shape",
     schema.VariantOf("circle", circleSchema,
         func(shape Shape) (Circle, bool) { circle, is := shape.(Circle); return circle, is },
         func(circle Circle) Shape { return circle }),
@@ -314,7 +314,7 @@ The wire form names the chosen variant as the object's single member:
 The other REST idiom names the variant in a field of the variant's own object:
 
 ```go
-var toleranceSchema = schema.OneOfBy[Tolerance]("Tolerance", "type",
+var toleranceSchema = schema.TaggedUnion[Tolerance]("Tolerance", "type",
     schema.VariantOf("iso2768", iso2768Schema, narrow, widen),
     schema.VariantOf("iso10800", iso10800Schema, narrow, widen),
 )
@@ -330,7 +330,7 @@ that name is a declaration mistake — one of the two would win, and which is no
 something to leave to chance — and every variant must be an object, because a
 field inside one is where the name goes.
 
-This form costs more than `OneOf`, and the cost is worth knowing. The name may
+This form costs more than `Union`, and the cost is worth knowing. The name may
 arrive **after** the fields whose meaning it settles, and a producer is free to
 put it anywhere, so a decoder has to read the whole object before it knows what
 it read. That is a power a streaming source does not have, so it is asked for
@@ -343,8 +343,8 @@ type Bufferer interface {
 ```
 
 JSON implements it, and so does the universal representation. A format that
-streams its input does not, and decoding a `OneOfBy` through one is refused with
-that reason rather than half-done. `OneOf` needs nothing of the sort, which is
+streams its input does not, and decoding a `TaggedUnion` through one is refused with
+that reason rather than half-done. `Union` needs nothing of the sort, which is
 why it remains the one to reach for when nothing external dictates the wire.
 
 Variants are tried in declared order on encode, so a narrower variant belongs

@@ -111,7 +111,7 @@ func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 // type either.
 //
 // It is a variant and not an alternative or a choice, because the type it
-// returns is Variant and OneOf takes Variants. The word was already chosen.
+// returns is Variant and Union takes Variants. The word was already chosen.
 func DynamicVariant[B any](name string, shape Schema[B]) Variant[dynamic.Value] {
 	codec := Dynamic(shape.Structure())
 	if fault := Validate(shape); fault != nil {

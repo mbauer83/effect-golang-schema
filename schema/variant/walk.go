@@ -124,7 +124,7 @@ func rewrapNode(node structure.Node, inner structure.Node) (structure.Node, erro
 // of entities does not, because its key would need somewhere of its own to live
 // and the description does not name it. This answers a different question:
 // whether the caller creates these separately. A map of entities is still a map
-// of things with identities, so a create shape leaves them out for the same
+// of things with identities, so an insert shape leaves them out for the same
 // reason a list of them is left out.
 //
 // Two questions that agree about everything except a map, so they are two
