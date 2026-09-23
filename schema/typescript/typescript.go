@@ -26,21 +26,13 @@ import (
 )
 
 // Module renders the named shapes reachable from roots as one TypeScript
-
 // module: an exported Schema value and an exported type for each.
-
 //
-
 // Every named object and union becomes a component, in an order in which each
-
 // is declared before it is used; a reference that would need a component not
-
 // yet declared -- a recursive shape -- is suspended, so it is read when a value
-
 // is decoded rather than when the module loads. Two different shapes with one
-
 // name are refused, because one of them would silently be lost.
-
 func Module(header string, roots ...structure.Node) (string, error) {
 	module := &module{components: map[string]structure.Node{}}
 	for _, root := range roots {
@@ -85,7 +77,6 @@ type module struct {
 }
 
 // declare writes name's declaration after every component it uses.
-
 func (module *module) declare(name string) error {
 	if module.declared == nil {
 		module.declared, module.declaring = map[string]bool{}, map[string]bool{}

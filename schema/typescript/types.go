@@ -8,6 +8,9 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
+// typeOf is the TypeScript type node decodes to, written out: what Effect's
+// Struct, Array, Record, NullOr and Union infer, spelled by hand for the
+// components whose type cannot be inferred.
 func (module *module) typeOf(node structure.Node, top bool) (string, error) {
 	switch node := node.(type) {
 	case structure.Scalar:

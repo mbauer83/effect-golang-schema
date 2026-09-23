@@ -7,7 +7,6 @@ import (
 )
 
 // collect finds every named shape under node.
-
 func (module *module) collect(node structure.Node) error {
 	switch node := node.(type) {
 	case structure.Object:
@@ -53,11 +52,8 @@ func (module *module) collect(node structure.Node) error {
 }
 
 // sameName reports whether seen is node reached again by another path rather
-
 // than a different shape that happens to share its name: the same fields,
-
 // under the same names, in the same order.
-
 func sameName(seen structure.Node, node structure.Object) bool {
 	object, ok := seen.(structure.Object)
 	if !ok || len(object.Fields) != len(node.Fields) {
@@ -72,7 +68,6 @@ func sameName(seen structure.Node, node structure.Object) bool {
 }
 
 // uses are the components node names, not looking inside them.
-
 func uses(node structure.Node) []string {
 	var names []string
 	var walk func(node structure.Node, top bool)
@@ -107,37 +102,3 @@ func uses(node structure.Node) []string {
 	walk(node, true)
 	return names
 }
-
-// expression is the Schema value for node. top is true for the node a
-
-// component is declared as, which is spelled out rather than referred to.
-
-// reference names a component, suspended when it is not declared yet.
-
-// typeOf is the TypeScript type node decodes to, written out: what Effect's
-
-// Struct, Array, Record, NullOr and Union infer, spelled by hand for the
-
-// components whose type cannot be inferred.
-
-// object is a Struct of fields, with tag first when the object is a variant
-
-// of a union told apart by a field of its own.
-
-// union is either of the two wire forms a union has: the variant's name as a
-
-// field inside its own object, or as the single member of a wrapping one.
-
-// key is a member name, quoted when it is not an identifier.
-
-// referenceName is the component a reference points at: its own name when it
-
-// has one, and otherwise the name of the shape it resolves to, which is how a
-
-// schema suspended for recursion refers to itself.
-
-// identifier is the TypeScript name of a component: the last segment of its
-
-// schema name, which a qualified name like "catalog.Film" carries after its
-
-// dot.

@@ -8,6 +8,8 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
+// expression is the Schema value for node. top is true for the node a
+// component is declared as, which is spelled out rather than referred to.
 func (module *module) expression(node structure.Node, top bool) (string, error) {
 	switch node := node.(type) {
 	case structure.Scalar:
@@ -37,6 +39,7 @@ func (module *module) expression(node structure.Node, top bool) (string, error) 
 	return "", fmt.Errorf("typescript: %T is not a shape this projection knows", node)
 }
 
+// reference names a component, suspended when it is not declared yet.
 func (module *module) reference(name string) string {
 	if module.declared[name] {
 		return name
@@ -48,6 +51,8 @@ func (module *module) reference(name string) string {
 	return "Schema.suspend((): Schema.Codec<" + name + "> => " + name + ")"
 }
 
+// object is a Struct of fields, with tag first when the object is a variant
+// of a union told apart by a field of its own.
 func (module *module) object(fields []structure.Field, tag string) (string, error) {
 	var members []string
 	if tag != "" {
@@ -69,6 +74,8 @@ func (module *module) object(fields []structure.Field, tag string) (string, erro
 	return "Schema.Struct({\n" + strings.Join(members, "\n") + "\n})", nil
 }
 
+// union is either of the two wire forms a union has: the variant's name as a
+// field inside its own object, or as the single member of a wrapping one.
 func (module *module) union(union structure.Union) (string, error) {
 	var members []string
 	for _, variant := range union.Variants {

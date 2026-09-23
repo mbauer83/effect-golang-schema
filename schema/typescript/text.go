@@ -50,6 +50,7 @@ func indent(text string) string {
 
 var plainKey = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
+// key is a member name, quoted when it is not an identifier.
 func key(name string) string {
 	if plainKey.MatchString(name) {
 		return name
@@ -57,6 +58,9 @@ func key(name string) string {
 	return strconv.Quote(name)
 }
 
+// referenceName is the component a reference points at: its own name when it
+// has one, and otherwise the name of the shape it resolves to, which is how a
+// schema suspended for recursion refers to itself.
 func referenceName(reference structure.Reference) string {
 	if reference.Name != "" || reference.Resolve == nil {
 		return identifier(reference.Name)
