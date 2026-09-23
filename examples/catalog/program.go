@@ -7,7 +7,6 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema"
 	"github.com/mbauer83/effect-golang-schema/schema/jsonschema"
 	"github.com/mbauer83/effect-golang/effect"
-	"github.com/mbauer83/effect-golang/experimental/direct"
 )
 
 type catalogEffect[A any] = effect.Effect[effect.Unit, Fault, A]
@@ -25,19 +24,12 @@ type published struct {
 // The schema is validated first, so a declaration mistake fails the program at
 // its start rather than on the first document that happens to reach it.
 //
-// Written in direct style, which the reference tells you to reach for exactly
-// here: the sequence is seven dependent stages, and a Workflow's explicit state
-// type was the thing making it hard to read -- a four-field struct that existed
-// only to carry a value from one stage to the next, plus two adapters so every
-// Bind read the same way. None of that says anything about a catalogue. The
-// body holds no defer, which is the other condition: a defer here would run on
-// an ordinary domain failure and not only on a panic.
-//
-// The cost is that experimental/direct is experimental. That is a real cost and
-// it is the reason to prefer Workflow by default.
+// Written in direct style, because the sequence is seven dependent stages and
+// each stage's value is what the next one reads: written as a chain, every
+// stage would nest inside the one before it.
 func Program(inputPath string, normalisedPath string, contractPath string) catalogEffect[Report] {
 	io := effect.IOFor[effect.Unit]()
-	return direct.Run(func(do *direct.Do[effect.Unit, Fault]) Report {
+	return effect.Gen(func(do *effect.Do[effect.Unit, Fault]) Report {
 		do.Await(validated())
 
 		document := do.Await(read(io, inputPath))
