@@ -24,14 +24,14 @@ var file schema.Schema[dynamic.Value]
 
 func init() {
 	folder = schema.Struct[dynamic.Value]("Folder",
-		schema.DescribedField("name", schema.Text()),
-		schema.DescribedField("files",
-			schema.List(schema.Deferred(func() schema.Schema[dynamic.Value] { return file }))),
+		schema.DynamicField("name", schema.Text()),
+		schema.DynamicField("files",
+			schema.List(schema.Suspend(func() schema.Schema[dynamic.Value] { return file }))),
 	)
 	file = schema.Struct[dynamic.Value]("File",
-		schema.DescribedField("name", schema.Text()),
-		schema.DescribedField("parent",
-			schema.Nullable(schema.Deferred(func() schema.Schema[dynamic.Value] { return folder }))),
+		schema.DynamicField("name", schema.Text()),
+		schema.DynamicField("parent",
+			schema.Nullable(schema.Suspend(func() schema.Schema[dynamic.Value] { return folder }))),
 	)
 }
 

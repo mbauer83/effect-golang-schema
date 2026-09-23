@@ -20,12 +20,12 @@ type Default interface {
 	defaultValue()
 }
 
-// DefaultTo is a fixed value.
+// DefaultValue is a fixed value.
 //
 // It carries a dynamic.Value rather than a Go value because a description need
 // not have a Go type at all, and because every projection already knows how to
 // write one of those.
-type DefaultTo struct {
+type DefaultValue struct {
 	Value dynamic.Value
 }
 
@@ -36,5 +36,5 @@ type DefaultTo struct {
 // row is written.
 type DefaultNow struct{}
 
-func (DefaultTo) defaultValue()  {}
-func (DefaultNow) defaultValue() {}
+func (DefaultValue) defaultValue() {}
+func (DefaultNow) defaultValue()   {}

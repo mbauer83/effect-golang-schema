@@ -32,17 +32,17 @@ func readUnion(union structure.Union, bytes []byte) (dynamic.Value, error) {
 		known[variant.Number] = true
 	}
 
-	found, err := readOccurrences(known, bytes)
+	occurrences, err := readOccurrences(known, bytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", union.Name, err)
 	}
 
-	chosen, last := lastWritten(union, found)
+	chosen, last := lastVariant(union, occurrences)
 	if !last {
 		return nil, fmt.Errorf("%s is a choice of one, and the message chose none", union.Name)
 	}
 	variant := byNumber[chosen]
-	value, err := readSingle(variant.Node, found[chosen][len(found[chosen])-1])
+	value, err := readSingle(variant.Node, occurrences[chosen][len(occurrences[chosen])-1])
 	if err != nil {
 		return nil, fmt.Errorf("variant %q of %s: %w", variant.Name, union.Name, err)
 	}
@@ -52,15 +52,15 @@ func readUnion(union structure.Union, bytes []byte) (dynamic.Value, error) {
 	return dynamic.Object{Fields: []dynamic.Field{{Name: variant.Name, Value: value}}}, nil
 }
 
-// lastWritten is the variant number written last, which is the one that counts.
+// lastVariant is the variant number written last, which is the one that counts.
 //
 // The order the variants were declared in is not the order the wire carried
 // them, so this walks the declaration and takes the one that was present --
 // which is unambiguous because a well-formed oneof carries exactly one.
-func lastWritten(union structure.Union, found map[int][]occurrence) (int, bool) {
+func lastVariant(union structure.Union, occurrences map[int][]occurrence) (int, bool) {
 	chosen, written := 0, false
 	for _, variant := range union.Variants {
-		if len(found[variant.Number]) > 0 {
+		if len(occurrences[variant.Number]) > 0 {
 			chosen, written = variant.Number, true
 		}
 	}
@@ -70,30 +70,30 @@ func lastWritten(union structure.Union, found map[int][]occurrence) (int, bool) 
 func readScalar(shape structure.Scalar, appearance occurrence) (dynamic.Value, error) {
 	switch shape.Kind {
 	case structure.Text:
-		if appearance.kind != counted {
-			return nil, layout("a string", appearance.kind)
+		if appearance.kind != wireLen {
+			return nil, layoutMismatchError("a string", appearance.kind)
 		}
 		return dynamic.Text{Value: string(appearance.bytes)}, nil
 	case structure.Bytes:
-		if appearance.kind != counted {
-			return nil, layout("bytes", appearance.kind)
+		if appearance.kind != wireLen {
+			return nil, layoutMismatchError("bytes", appearance.kind)
 		}
 		return dynamic.Bytes{Value: appearance.bytes}, nil
 	case structure.Boolean:
-		if appearance.kind != varying {
-			return nil, layout("a bool", appearance.kind)
+		if appearance.kind != wireVarint {
+			return nil, layoutMismatchError("a bool", appearance.kind)
 		}
-		return dynamic.Boolean{Value: appearance.fixed != 0}, nil
+		return dynamic.Boolean{Value: appearance.bits != 0}, nil
 	case structure.Integer:
-		if appearance.kind != varying {
-			return nil, layout("a whole number", appearance.kind)
+		if appearance.kind != wireVarint {
+			return nil, layoutMismatchError("a whole number", appearance.kind)
 		}
-		return dynamic.Integer{Value: int64(appearance.fixed)}, nil
+		return dynamic.Integer{Value: int64(appearance.bits)}, nil
 	case structure.Number:
 		return readFractional(shape, appearance)
 	case structure.Timestamp:
-		if appearance.kind != counted {
-			return nil, layout("an instant", appearance.kind)
+		if appearance.kind != wireLen {
+			return nil, layoutMismatchError("an instant", appearance.kind)
 		}
 		return readInstant(appearance.bytes)
 	default:
@@ -108,41 +108,41 @@ func readScalar(shape structure.Scalar, appearance occurrence) (dynamic.Value, e
 // rather than failing -- so the field is refused when the two disagree.
 func readFractional(shape structure.Scalar, appearance occurrence) (dynamic.Value, error) {
 	if shape.Precision == structure.Float32Bits {
-		if appearance.kind != fourBytes {
-			return nil, layout("a float", appearance.kind)
+		if appearance.kind != wireI32 {
+			return nil, layoutMismatchError("a float", appearance.kind)
 		}
-		return dynamic.Number{Value: float64(math.Float32frombits(uint32(appearance.fixed)))}, nil
+		return dynamic.Number{Value: float64(math.Float32frombits(uint32(appearance.bits)))}, nil
 	}
-	if appearance.kind != eightBytes {
-		return nil, layout("a double", appearance.kind)
+	if appearance.kind != wireI64 {
+		return nil, layoutMismatchError("a double", appearance.kind)
 	}
-	return dynamic.Number{Value: math.Float64frombits(appearance.fixed)}, nil
+	return dynamic.Number{Value: math.Float64frombits(appearance.bits)}, nil
 }
 
 // readInstant reads a google.protobuf.Timestamp: seconds in field 1 and
 // nanoseconds in field 2.
 func readInstant(bytes []byte) (dynamic.Value, error) {
-	found, err := readOccurrences(map[int]bool{1: true, 2: true}, bytes)
+	occurrences, err := readOccurrences(map[int]bool{1: true, 2: true}, bytes)
 	if err != nil {
 		return nil, err
 	}
 	seconds, nanos := int64(0), int64(0)
-	if foundEntry := found[1]; len(foundEntry) > 0 {
-		seconds = int64(foundEntry[len(foundEntry)-1].fixed)
+	if appearances := occurrences[1]; len(appearances) > 0 {
+		seconds = int64(appearances[len(appearances)-1].bits)
 	}
-	if foundEntry := found[2]; len(foundEntry) > 0 {
-		nanos = int64(foundEntry[len(foundEntry)-1].fixed)
+	if appearances := occurrences[2]; len(appearances) > 0 {
+		nanos = int64(appearances[len(appearances)-1].bits)
 	}
 	return dynamic.Timestamp{Value: time.Unix(seconds, nanos).UTC()}, nil
 }
 
-// decodePacked reads the elements out of a packed field, which carries them with no
+// readPacked reads the elements out of a packed field, which carries them with no
 // tags of their own.
-func decodePacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error) {
+func readPacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error) {
 	from := &reader{bytes: bytes}
 	elements := []dynamic.Value{}
 	for !from.done() {
-		value, err := unpackedOne(from, shape)
+		value, err := readPackedElement(from, shape)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +151,7 @@ func decodePacked(shape structure.Scalar, bytes []byte) ([]dynamic.Value, error)
 	return elements, nil
 }
 
-func unpackedOne(from *reader, shape structure.Scalar) (dynamic.Value, error) {
+func readPackedElement(from *reader, shape structure.Scalar) (dynamic.Value, error) {
 	switch {
 	case shape.Kind == structure.Boolean:
 		varint, err := from.varint()
@@ -205,6 +205,6 @@ func zeroOf(node structure.Node) (dynamic.Value, bool) {
 	}
 }
 
-func layout(wanted string, kind wireType) error {
-	return fmt.Errorf("the description says %s, and this field is wire type %d", wanted, kind)
+func layoutMismatchError(expectation string, kind wireType) error {
+	return fmt.Errorf("the description says %s, and this field is wire type %d", expectation, kind)
 }

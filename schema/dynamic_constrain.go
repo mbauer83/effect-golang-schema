@@ -20,13 +20,13 @@ func constrainText(inner Schema[string], constraints []structure.Constraint) Sch
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.MinLength:
-			inner = inner.Constrained(MinLength(narrowed.Value))
+			inner = inner.Check(MinLength(narrowed.Value))
 		case structure.MaxLength:
-			inner = inner.Constrained(MaxLength(narrowed.Value))
+			inner = inner.Check(MaxLength(narrowed.Value))
 		case structure.Pattern:
-			inner = inner.Constrained(Matching(narrowed.Expression))
+			inner = inner.Check(Pattern(narrowed.Expression))
 		default:
-			return faultedSchema[string](inner.node, misplacedConstraint("text"))
+			return faultySchema[string](inner.node, constraintMismatch("text"))
 		}
 	}
 	return inner
@@ -36,15 +36,15 @@ func constrainInteger(inner Schema[int64], constraints []structure.Constraint) S
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.AtLeast:
-			inner = inner.Constrained(AtLeast(wireBound(narrowed.Value)))
+			inner = inner.Check(AtLeast(wireBound(narrowed.Value)))
 		case structure.AtMost:
-			inner = inner.Constrained(AtMost(wireBound(narrowed.Value)))
+			inner = inner.Check(AtMost(wireBound(narrowed.Value)))
 		case structure.Above:
-			inner = inner.Constrained(Above(wireBound(narrowed.Value)))
+			inner = inner.Check(Above(wireBound(narrowed.Value)))
 		case structure.Below:
-			inner = inner.Constrained(Below(wireBound(narrowed.Value)))
+			inner = inner.Check(Below(wireBound(narrowed.Value)))
 		default:
-			return faultedSchema[int64](inner.node, misplacedConstraint("a whole number"))
+			return faultySchema[int64](inner.node, constraintMismatch("a whole number"))
 		}
 	}
 	return inner
@@ -54,15 +54,15 @@ func constrainNumber(inner Schema[float64], constraints []structure.Constraint) 
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.AtLeast:
-			inner = inner.Constrained(AtLeast(narrowed.Value))
+			inner = inner.Check(AtLeast(narrowed.Value))
 		case structure.AtMost:
-			inner = inner.Constrained(AtMost(narrowed.Value))
+			inner = inner.Check(AtMost(narrowed.Value))
 		case structure.Above:
-			inner = inner.Constrained(Above(narrowed.Value))
+			inner = inner.Check(Above(narrowed.Value))
 		case structure.Below:
-			inner = inner.Constrained(Below(narrowed.Value))
+			inner = inner.Check(Below(narrowed.Value))
 		default:
-			return faultedSchema[float64](inner.node, misplacedConstraint("a number"))
+			return faultySchema[float64](inner.node, constraintMismatch("a number"))
 		}
 	}
 	return inner
@@ -72,11 +72,11 @@ func constrainList[A any](inner Schema[[]A], constraints []structure.Constraint)
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.MinItems:
-			inner = inner.Constrained(MinItems[A](narrowed.Value))
+			inner = inner.Check(MinItems[A](narrowed.Value))
 		case structure.MaxItems:
-			inner = inner.Constrained(MaxItems[A](narrowed.Value))
+			inner = inner.Check(MaxItems[A](narrowed.Value))
 		default:
-			return faultedSchema[[]A](inner.node, misplacedConstraint("a list"))
+			return faultySchema[[]A](inner.node, constraintMismatch("a list"))
 		}
 	}
 	return inner
@@ -100,6 +100,6 @@ func wireBound(bound float64) int64 {
 	}
 }
 
-func misplacedConstraint(kind string) error {
+func constraintMismatch(kind string) error {
 	return fail("carries a constraint that does not narrow "+kind, nil)
 }

@@ -19,7 +19,7 @@ import (
 
 // oneField is the smallest description that asks for a value of one kind.
 func oneField[A any](name string, of schema.Schema[A]) schema.Schema[dynamic.Value] {
-	return schema.Struct[dynamic.Value]("Row", schema.DescribedField(name, of))
+	return schema.Struct[dynamic.Value]("Row", schema.DynamicField(name, of))
 }
 
 func rowOf(name string, held dynamic.Value) dynamic.Value {
@@ -170,7 +170,7 @@ func TestAnOptionalFieldReadsAnAbsenceAsWellAsDeclaringOne(t *testing.T) {
 	// the description said it could, and the description would not read its
 	// own row back.
 	described := schema.Struct[dynamic.Value]("Row",
-		schema.DescribedField("held", schema.Time()).Optional())
+		schema.DynamicField("held", schema.Time()).Optional())
 
 	read, err := schema.FromDynamic(described, rowOf("held", dynamic.Absent{}))
 	if err != nil {

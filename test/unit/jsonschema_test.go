@@ -46,7 +46,7 @@ func TestScalarRefinementsReachTheProjection(t *testing.T) {
 		ID string
 	}
 	stampedSchema := schema.Struct[stamped]("Stamped",
-		schema.FieldOf("id", schema.Formatted("uuid"),
+		schema.FieldOf("id", schema.TextFormat("uuid"),
 			func(value stamped) string { return value.ID },
 			func(value *stamped, id string) { value.ID = id }),
 	)
@@ -69,7 +69,7 @@ func TestARecursiveTypeTerminates(t *testing.T) {
 		schema.FieldOf("label", schema.Text(),
 			func(node Node) string { return node.Label },
 			func(node *Node, label string) { node.Label = label }),
-		schema.FieldOf("children", schema.List(schema.Deferred(func() schema.Schema[Node] {
+		schema.FieldOf("children", schema.List(schema.Suspend(func() schema.Schema[Node] {
 			return nodeSchema
 		})),
 			func(node Node) []Node { return node.Children },
@@ -100,7 +100,7 @@ func TestARecursiveValueRoundTrips(t *testing.T) {
 		schema.FieldOf("label", schema.Text(),
 			func(node Node) string { return node.Label },
 			func(node *Node, label string) { node.Label = label }),
-		schema.FieldOf("children", schema.List(schema.Deferred(func() schema.Schema[Node] {
+		schema.FieldOf("children", schema.List(schema.Suspend(func() schema.Schema[Node] {
 			return nodeSchema
 		})),
 			func(node Node) []Node { return node.Children },
@@ -223,7 +223,7 @@ func TestTheDocumentModelCarriesBoundsAsTypedFields(t *testing.T) {
 	// a bound without re-discovering how it was written.
 	component := jsonschema.Project(
 		schema.Struct[reading]("Reading",
-			schema.FieldOf("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100)),
+			schema.FieldOf("pages", schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](100)),
 				func(value reading) int { return value.Pages },
 				func(value *reading, pages int) { value.Pages = pages }),
 		).Structure(),

@@ -13,9 +13,9 @@ import (
 )
 
 func describeFields[A any](fields []Field[A]) []structure.Field {
-	described := make([]structure.Field, 0, len(fields))
+	descriptions := make([]structure.Field, 0, len(fields))
 	for _, field := range fields {
-		described = append(described, structure.Field{
+		descriptions = append(descriptions, structure.Field{
 			Name:     field.name,
 			Doc:      field.doc,
 			Node:     field.node,
@@ -26,7 +26,7 @@ func describeFields[A any](fields []Field[A]) []structure.Field {
 			Default:  field.fallback,
 		})
 	}
-	return described
+	return descriptions
 }
 
 // firstFieldFault reports a duplicate name, an empty name, or a fault inherited
@@ -81,7 +81,7 @@ func encodeFields[A any](value A, fields []Field[A], into Sink) error {
 }
 
 func decodeFields[A any](from Source, byName map[string]Field[A], required []string) (A, error) {
-	var built A
+	var result A
 	seen := make(map[string]bool, len(byName))
 
 	err := from.ReadObject(func(name string) error {
@@ -92,7 +92,7 @@ func decodeFields[A any](from Source, byName map[string]Field[A], required []str
 			return from.Skip()
 		}
 		seen[name] = true
-		return within(name, field.decode(&built, from))
+		return within(name, field.decode(&result, from))
 	})
 	if err != nil {
 		var missing A
@@ -105,5 +105,5 @@ func decodeFields[A any](from Source, byName map[string]Field[A], required []str
 			return missing, within(name, fail("required field is missing", nil))
 		}
 	}
-	return built, nil
+	return result, nil
 }

@@ -92,12 +92,12 @@ var formats = []struct {
 func TestEachFormatAdmitsWhatItSaysAndRefusesTheRest(t *testing.T) {
 	for _, format := range formats {
 		for _, admitted := range format.admitted {
-			if _, err := schema.DecodeJSON(format.shape, quoted(admitted)); err != nil {
+			if _, err := schema.DecodeJSON(format.shape, jsonString(admitted)); err != nil {
 				t.Errorf("%s: expected %q to be admitted, got %v", format.label, admitted, err)
 			}
 		}
 		for _, refused := range format.refused {
-			if _, err := schema.DecodeJSON(format.shape, quoted(refused)); err == nil {
+			if _, err := schema.DecodeJSON(format.shape, jsonString(refused)); err == nil {
 				t.Errorf("%s: expected %q to be refused", format.label, refused)
 			}
 		}
@@ -146,7 +146,7 @@ func TestAFormatIsCheckedOnEncodingToo(t *testing.T) {
 }
 
 func TestAFormatRefusalSaysWhatItWanted(t *testing.T) {
-	_, err := schema.DecodeJSON(schema.Email(), quoted("ada"))
+	_, err := schema.DecodeJSON(schema.Email(), jsonString("ada"))
 	if err == nil {
 		t.Fatal("expected the address to be refused")
 	}
@@ -158,8 +158,8 @@ func TestAFormatRefusalSaysWhatItWanted(t *testing.T) {
 func TestAnUnknownFormatAnnotatesWithoutChecking(t *testing.T) {
 	// The format vocabulary is open. A projection carries whatever the author
 	// wrote, and a name this package has not been taught claims nothing.
-	shape := schema.Formatted("isbn")
-	if _, err := schema.DecodeJSON(shape, quoted("anything at all")); err != nil {
+	shape := schema.TextFormat("isbn")
+	if _, err := schema.DecodeJSON(shape, jsonString("anything at all")); err != nil {
 		t.Fatalf("expected an unchecked format to admit anything, got %v", err)
 	}
 	if scalar := shape.Structure().(structure.Scalar); scalar.Format != "isbn" {
@@ -167,7 +167,7 @@ func TestAnUnknownFormatAnnotatesWithoutChecking(t *testing.T) {
 	}
 }
 
-func quoted(value string) []byte {
+func jsonString(value string) []byte {
 	document, err := schema.EncodeJSON(schema.Text(), value)
 	if err != nil {
 		panic(err)

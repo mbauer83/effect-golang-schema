@@ -20,11 +20,11 @@ func Text() Schema[string] {
 	)
 }
 
-// Formatted describes a string a projection should refine, such as "uuid",
+// TextFormat describes a string a projection should refine, such as "uuid",
 // "email" or "date-time". The refinement is a hint for readers of the
 // projection; it is not validated here, because a claim a schema cannot enforce
 // should not look like one it does.
-func Formatted(format string) Schema[string] {
+func TextFormat(format string) Schema[string] {
 	return of(
 		structure.Scalar{Kind: structure.Text, Format: format},
 		func(value string, into Sink) error { return into.Text(value) },

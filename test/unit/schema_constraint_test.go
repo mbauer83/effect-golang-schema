@@ -14,7 +14,7 @@ import (
 )
 
 func TestABoundAdmitsWhatItSaysAndRefusesTheRest(t *testing.T) {
-	pages := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100))
+	pages := schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](100))
 
 	for _, admitted := range []int{1, 50, 100} {
 		if _, err := schema.DecodeJSON(pages, []byte(strconv.Itoa(admitted))); err != nil {
@@ -34,7 +34,7 @@ func TestABoundAdmitsWhatItSaysAndRefusesTheRest(t *testing.T) {
 }
 
 func TestAnExclusiveBoundExcludesTheBoundItself(t *testing.T) {
-	fraction := schema.Float64().Constrained(schema.Above[float64](0), schema.Below[float64](1))
+	fraction := schema.Float64().Check(schema.Above[float64](0), schema.Below[float64](1))
 
 	if _, err := schema.DecodeJSON(fraction, []byte("0.5")); err != nil {
 		t.Fatalf("expected 0.5 to be admitted, got %v", err)
@@ -49,7 +49,7 @@ func TestAnExclusiveBoundExcludesTheBoundItself(t *testing.T) {
 func TestALengthIsCountedInCharactersRatherThanBytes(t *testing.T) {
 	// A length a client can check is the one it can see, and "é" is one
 	// character however many bytes it takes.
-	short := schema.Text().Constrained(schema.MaxLength(3))
+	short := schema.Text().Check(schema.MaxLength(3))
 
 	if _, err := schema.DecodeJSON(short, []byte(`"ééé"`)); err != nil {
 		t.Fatalf("expected three characters to be admitted, got %v", err)
@@ -60,7 +60,7 @@ func TestALengthIsCountedInCharactersRatherThanBytes(t *testing.T) {
 }
 
 func TestAPatternRefusesWhatItDoesNotMatch(t *testing.T) {
-	code := schema.Text().Constrained(schema.Matching(`^[A-Z]{2}-[0-9]{4}$`))
+	code := schema.Text().Check(schema.Pattern(`^[A-Z]{2}-[0-9]{4}$`))
 
 	if _, err := schema.DecodeJSON(code, []byte(`"AB-1234"`)); err != nil {
 		t.Fatalf("expected the code to be admitted, got %v", err)
@@ -75,7 +75,7 @@ func TestAPatternRefusesWhatItDoesNotMatch(t *testing.T) {
 }
 
 func TestAnItemCountAppliesToTheList(t *testing.T) {
-	authors := schema.List(schema.Text()).Constrained(schema.MinItems[string](1), schema.MaxItems[string](2))
+	authors := schema.List(schema.Text()).Check(schema.MinItems[string](1), schema.MaxItems[string](2))
 
 	if _, err := schema.DecodeJSON(authors, []byte(`["one"]`)); err != nil {
 		t.Fatalf("expected one author to be admitted, got %v", err)
@@ -90,7 +90,7 @@ func TestAnItemCountAppliesToTheList(t *testing.T) {
 func TestAConstraintIsCheckedOnEncodingToo(t *testing.T) {
 	// A value this program built that breaks its own constraint is a mistake
 	// here, and finding it at the boundary beats sending it.
-	pages := schema.Int().Constrained(schema.AtLeast[int](1))
+	pages := schema.Int().Check(schema.AtLeast[int](1))
 
 	if _, err := schema.EncodeJSON(pages, 0); err == nil {
 		t.Fatal("expected an out-of-bounds value to be refused before it was written")
@@ -100,7 +100,7 @@ func TestAConstraintIsCheckedOnEncodingToo(t *testing.T) {
 func TestAConstraintCarriesItsPathThroughAStruct(t *testing.T) {
 	type entry struct{ Pages int }
 	bounded := schema.Struct[entry]("Entry",
-		schema.FieldOf("pages", schema.Int().Constrained(schema.AtLeast[int](1)),
+		schema.FieldOf("pages", schema.Int().Check(schema.AtLeast[int](1)),
 			func(value entry) int { return value.Pages },
 			func(value *entry, pages int) { value.Pages = pages }),
 	)
@@ -118,7 +118,7 @@ func TestAConstraintReachesTheDescription(t *testing.T) {
 	// One declaration, two jobs: it refuses a value and it appears in the
 	// published contract. A constraint that only did the first would leave a
 	// client to discover the rule by being rejected.
-	shape, isScalar := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100)).
+	shape, isScalar := schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](100)).
 		Structure().(structure.Scalar)
 	if !isScalar {
 		t.Fatal("expected a scalar")
@@ -150,11 +150,11 @@ func TestConstraintDeclarationMistakesAreReported(t *testing.T) {
 		// A constraint on an object would have to say which member it meant, so
 		// it is refused rather than attached to the first field or dropped.
 		"a bound on a struct": schema.Validate(
-			objectAsText().Constrained(schema.MinLength(1))),
+			objectAsText().Check(schema.MinLength(1))),
 		"a pattern that does not compile": schema.Validate(
-			schema.Text().Constrained(schema.Matching(`[`))),
+			schema.Text().Check(schema.Pattern(`[`))),
 		"a bound on an unusable schema": schema.Validate(
-			schema.Schema[int]{}.Constrained(schema.AtLeast(1))),
+			schema.Schema[int]{}.Check(schema.AtLeast(1))),
 	}
 	for mistake, err := range cases {
 		if err == nil {
@@ -167,7 +167,7 @@ func TestAConstraintIsAppliedInTheOrderItIsWritten(t *testing.T) {
 	// Two bounds on one string, said left to right. The order matters for the
 	// message: a value that breaks both is reported against the first, which
 	// is the one a reader of the declaration meets first.
-	described := schema.Text().Constrained(schema.MinLength(2), schema.MaxLength(4))
+	described := schema.Text().Check(schema.MinLength(2), schema.MaxLength(4))
 	if err := schema.Validate(described); err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestAConstraintIsAppliedInTheOrderItIsWritten(t *testing.T) {
 func TestBothBoundsReachTheDescription(t *testing.T) {
 	// The other half of what a constraint is for: it appears in the published
 	// contract, and applying two of them in one call records both.
-	described := schema.Text().Constrained(schema.MinLength(2), schema.MaxLength(4))
+	described := schema.Text().Check(schema.MinLength(2), schema.MaxLength(4))
 	scalar, isScalar := described.Structure().(structure.Scalar)
 	if !isScalar {
 		t.Fatalf("expected a scalar, got %T", described.Structure())
@@ -211,7 +211,7 @@ func TestAConstraintOnAShapeThatTakesNoneIsRefused(t *testing.T) {
 		schema.FieldOf("name", schema.Text(),
 			func(held holder) string { return held.Name },
 			func(held *holder, name string) { held.Name = name }),
-	).Constrained(schema.Constraint[holder]{})
+	).Check(schema.Constraint[holder]{})
 	if schema.Validate(described) == nil {
 		t.Fatal("expected a constraint an object cannot carry to be refused")
 	}

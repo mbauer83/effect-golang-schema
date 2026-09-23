@@ -7,15 +7,15 @@ package schema
 // boundary is better than sending it.
 //
 // A constraint is a value and is applied by a method, which is the same rule
-// Named and Documented follow -- a modifier changes a schema rather than
+// WithName and WithDescription follow -- a modifier changes a schema rather than
 // building one, and a reader should not have to remember which of them wrap
 // and which are called on what they change. Written as wrappers, two bounds on
 // one string read inside out:
 //
 //	MaxLength(MinLength(Text(), 1), 32)     // the subject is in the middle
-//	Text().Constrained(MinLength(1), MaxLength(32))
+//	Text().Check(MinLength(1), MaxLength(32))
 //
-// Each constraint is its own constructor rather than one generic Constrained
+// Each constraint is its own constructor rather than one generic Check
 // taking a measuring function, because measuring a value is type-dependent --
 // a number is compared, a string is counted, a list is counted differently --
 // and a generic one would have to take a function nobody wants to write.
@@ -43,28 +43,28 @@ import (
 // the type it is about. One concept, two levels, the way Schema is to
 // structure.Node.
 type Constraint[A any] struct {
-	described structure.Constraint
-	check     func(A) error
-	fault     error
+	description structure.Constraint
+	check       func(A) error
+	fault       error
 }
 
-// Constrained is this schema, admitting only what all of those admit.
+// Check is this schema, admitting only what all of those admit.
 //
 // In the order given, so a value that breaks two of them is reported against
 // the first -- which is the one a reader of the declaration meets first.
-func (schema Schema[A]) Constrained(constraints ...Constraint[A]) Schema[A] {
+func (schema Schema[A]) Check(constraints ...Constraint[A]) Schema[A] {
 	narrowed := schema
 	for _, constraint := range constraints {
 		if constraint.fault != nil {
-			return faultedSchema[A](schema.node, constraint.fault)
+			return faultySchema[A](schema.node, constraint.fault)
 		}
-		narrowed = applyConstraint(narrowed, constraint.described, constraint.check)
+		narrowed = applyConstraint(narrowed, constraint.description, constraint.check)
 	}
 	return narrowed
 }
 
-func newConstraint[A any](described structure.Constraint, check func(A) error) Constraint[A] {
-	return Constraint[A]{described: described, check: check}
+func newConstraint[A any](description structure.Constraint, check func(A) error) Constraint[A] {
+	return Constraint[A]{description: description, check: check}
 }
 
 // applyConstraint records the constraint in the description and checks it in both
@@ -75,11 +75,11 @@ func applyConstraint[A any](
 	check func(A) error,
 ) Schema[A] {
 	if fault := Validate(inner); fault != nil {
-		return faultedSchema[A](inner.node, fault)
+		return faultySchema[A](inner.node, fault)
 	}
 	node, applies := withConstraint(inner.node, constraint)
 	if !applies {
-		return faultedSchema[A](inner.node,
+		return faultySchema[A](inner.node,
 			fail("a constraint applies to a scalar or a list, and this is neither", nil))
 	}
 	return of(

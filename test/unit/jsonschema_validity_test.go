@@ -20,9 +20,9 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// compiled renders the projection of one structure and compiles it with a
+// compile renders the projection of one structure and compiles it with a
 // validator that has never seen this module.
-func compiled(t *testing.T, node structure.Node) *validator.Schema {
+func compile(t *testing.T, node structure.Node) *validator.Schema {
 	t.Helper()
 	rendered, err := jsonschema.Project(node).Render()
 	if err != nil {
@@ -64,7 +64,7 @@ func TestTheEmittedDocumentAcceptsWhatTheCodecWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := compiled(t, bookSchema.Structure()).Validate(instance(t, string(written))); err != nil {
+	if err := compile(t, bookSchema.Structure()).Validate(instance(t, string(written))); err != nil {
 		t.Fatalf("the projection rejects what the codec wrote: %v\n%s", err, written)
 	}
 }
@@ -74,13 +74,13 @@ func TestTheEmittedDocumentAcceptsAnOmittedOptionalField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := compiled(t, bookSchema.Structure()).Validate(instance(t, string(written))); err != nil {
+	if err := compile(t, bookSchema.Structure()).Validate(instance(t, string(written))); err != nil {
 		t.Fatalf("the projection requires a field the codec omits: %v\n%s", err, written)
 	}
 }
 
 func TestTheEmittedDocumentRefusesWhatTheCodecRefuses(t *testing.T) {
-	emitted := compiled(t, bookSchema.Structure())
+	emitted := compile(t, bookSchema.Structure())
 	cases := map[string]string{
 		"a missing required field": `{"title":"T","authors":[]}`,
 		"a mis-typed field":        `{"title":"T","authors":[],"pages":"many","hasIndex":false}`,
@@ -97,7 +97,7 @@ func TestTheEmittedDocumentToleratesAnUnknownFieldAsTheCodecDoes(t *testing.T) {
 	// A decoder that refused an unknown field could not read a document written
 	// by a newer producer, so the published contract must not refuse one either.
 	document := `{"title":"T","authors":[],"pages":1,"hasIndex":false,"isbn":"x"}`
-	if err := compiled(t, bookSchema.Structure()).Validate(instance(t, document)); err != nil {
+	if err := compile(t, bookSchema.Structure()).Validate(instance(t, document)); err != nil {
 		t.Fatalf("the projection refuses a field the codec tolerates: %v", err)
 	}
 	if _, err := schema.DecodeJSON(bookSchema, []byte(document)); err != nil {
@@ -106,7 +106,7 @@ func TestTheEmittedDocumentToleratesAnUnknownFieldAsTheCodecDoes(t *testing.T) {
 }
 
 func TestTheEmittedUnionAgreesWithTheCodecOnEveryCase(t *testing.T) {
-	emitted := compiled(t, shapeSchema.Structure())
+	emitted := compile(t, shapeSchema.Structure())
 	accepted := map[string]string{
 		"a named variant":   `{"circle":{"radius":2}}`,
 		"the other variant": `{"rectangle":{"width":1,"height":2}}`,
@@ -161,7 +161,7 @@ func everyShapeDocument(t *testing.T, missing *string) string {
 func TestTheEmittedDocumentAdmitsNullWhereTheCodecWritesIt(t *testing.T) {
 	// A nullable value is present and null. The projection has to say so, or it
 	// describes a document the codec is free to produce and it would refuse.
-	emitted := compiled(t, everyShapeSchema.Structure())
+	emitted := compile(t, everyShapeSchema.Structure())
 	held := "held"
 	for _, missing := range []*string{nil, &held} {
 		document := everyShapeDocument(t, missing)
@@ -172,7 +172,7 @@ func TestTheEmittedDocumentAdmitsNullWhereTheCodecWritesIt(t *testing.T) {
 }
 
 func TestTheEmittedDocumentRefusesNullWhereTheCodecWould(t *testing.T) {
-	emitted := compiled(t, everyShapeSchema.Structure())
+	emitted := compile(t, everyShapeSchema.Structure())
 	broken := strings.Replace(everyShapeDocument(t, nil), `"text":"text"`, `"text":null`, 1)
 
 	if err := emitted.Validate(instance(t, broken)); err == nil {

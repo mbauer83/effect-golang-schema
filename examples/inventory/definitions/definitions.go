@@ -24,27 +24,27 @@ import (
 
 // item is one stocked line.
 var item = schema.Struct[dynamic.Value]("Item",
-	schema.DescribedField("sku", schema.Text().Constrained(schema.Matching(`^[A-Z]{3}-[0-9]{5}$`))).
-		Documented("the stock-keeping unit, three letters and five digits"),
-	schema.DescribedField("onHand", schema.Uint16()).
-		Documented("how many are on hand"),
-	schema.DescribedField("weightGrams", schema.Float32()).
-		Documented("what one unit weighs"),
-	schema.DescribedField("id", schema.UUID()),
-	schema.DescribedField("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1))),
-	schema.DescribedField("note", schema.Text().Constrained(schema.MaxLength(200))).Optional(),
-).Documented("one stocked line")
+	schema.DynamicField("sku", schema.Text().Check(schema.Pattern(`^[A-Z]{3}-[0-9]{5}$`))).
+		WithDescription("the stock-keeping unit, three letters and five digits"),
+	schema.DynamicField("onHand", schema.Uint16()).
+		WithDescription("how many are on hand"),
+	schema.DynamicField("weightGrams", schema.Float32()).
+		WithDescription("what one unit weighs"),
+	schema.DynamicField("id", schema.UUID()),
+	schema.DynamicField("tags", schema.List(schema.Text()).Check(schema.MinItems[string](1))),
+	schema.DynamicField("note", schema.Text().Check(schema.MaxLength(200))).Optional(),
+).WithDescription("one stocked line")
 
 // movement is a change in what is stocked.
 var movement = schema.OneOf[dynamic.Value]("Movement",
-	schema.DescribedVariant("received", schema.Struct[dynamic.Value]("Received",
-		schema.DescribedField("count", schema.Uint16()),
-	)).Documented("stock arriving"),
-	schema.DescribedVariant("shipped", schema.Struct[dynamic.Value]("Shipped",
-		schema.DescribedField("count", schema.Uint16()),
-		schema.DescribedField("to", schema.Hostname()),
-	)).Documented("stock leaving"),
-).Documented("a change in what is stocked")
+	schema.DynamicVariant("received", schema.Struct[dynamic.Value]("Received",
+		schema.DynamicField("count", schema.Uint16()),
+	)).WithDescription("stock arriving"),
+	schema.DynamicVariant("shipped", schema.Struct[dynamic.Value]("Shipped",
+		schema.DynamicField("count", schema.Uint16()),
+		schema.DynamicField("to", schema.Hostname()),
+	)).WithDescription("stock leaving"),
+).WithDescription("a change in what is stocked")
 
 // Descriptions are every shape to generate, in the order to write them.
 func Descriptions() []structure.Node {
@@ -55,8 +55,8 @@ func Descriptions() []structure.Node {
 // start-up error here rather than a puzzling generator failure.
 func Faults() []error {
 	faults := []error{}
-	for _, described := range []schema.Schema[dynamic.Value]{item, movement} {
-		if err := schema.Validate(described); err != nil {
+	for _, description := range []schema.Schema[dynamic.Value]{item, movement} {
+		if err := schema.Validate(description); err != nil {
 			faults = append(faults, err)
 		}
 	}

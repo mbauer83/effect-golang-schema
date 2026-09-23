@@ -14,8 +14,8 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// Timestamps is the well-known type an instant is carried as.
-const Timestamps = "google/protobuf/timestamp.proto"
+// TimestampImport is the well-known type an instant is carried as.
+const TimestampImport = "google/protobuf/timestamp.proto"
 
 // Project projects a description into a proto3 file in the given package.
 //
@@ -25,8 +25,8 @@ const Timestamps = "google/protobuf/timestamp.proto"
 // and means something else next release.
 func Project(node structure.Node, packageName string) (Document, error) {
 	projection := &projector{
-		declared: map[string]bool{},
-		visiting: map[string]bool{},
+		declared:  map[string]bool{},
+		ancestors: map[string]bool{},
 	}
 	root, err := projection.typeNameOf(node)
 	if err != nil {
@@ -40,9 +40,9 @@ func Project(node structure.Node, packageName string) (Document, error) {
 	}, nil
 }
 
-// Declared is one procedure to project: its name, its prose, and the
+// Procedure is one procedure to project: its name, its prose, and the
 // descriptions of what it takes and returns.
-type Declared struct {
+type Procedure struct {
 	Service  string
 	Method   string
 	Doc      string
@@ -57,16 +57,16 @@ type Declared struct {
 // The services come out in the order their procedures were first named, and the
 // procedures in the order they were given, so the same input always produces
 // the same file -- which is what lets the file be checked in.
-func ProjectServices(packageName string, procedures ...Declared) (Document, error) {
+func ProjectServices(packageName string, procedures ...Procedure) (Document, error) {
 	projection := &projector{
-		declared: map[string]bool{},
-		visiting: map[string]bool{},
+		declared:  map[string]bool{},
+		ancestors: map[string]bool{},
 	}
 	services := map[string]int{}
 	document := Document{Package: packageName}
 
 	for _, procedure := range procedures {
-		method, err := projection.declaredMethod(procedure)
+		method, err := projection.method(procedure)
 		if err != nil {
 			return Document{}, err
 		}
@@ -85,7 +85,7 @@ func ProjectServices(packageName string, procedures ...Declared) (Document, erro
 	return document, nil
 }
 
-func (projection *projector) declaredMethod(procedure Declared) (Method, error) {
+func (projection *projector) method(procedure Procedure) (Method, error) {
 	request, err := projection.typeNameOf(procedure.Request)
 	if err != nil {
 		return Method{}, fmt.Errorf("the request of %s/%s: %w",
@@ -105,10 +105,10 @@ func (projection *projector) declaredMethod(procedure Declared) (Method, error) 
 }
 
 type projector struct {
-	messages []Message
-	declared map[string]bool
-	visiting map[string]bool
-	imports  []string
+	messages  []Message
+	declared  map[string]bool
+	ancestors map[string]bool
+	imports   []string
 }
 
 // typeNameOf declares the message a node is, and returns its name.
@@ -133,10 +133,10 @@ func (projection *projector) message(object structure.Object) (string, error) {
 	if object.Name == "" {
 		return "", errUnnamed
 	}
-	if projection.declared[object.Name] || projection.visiting[object.Name] {
+	if projection.declared[object.Name] || projection.ancestors[object.Name] {
 		return object.Name, nil
 	}
-	projection.visiting[object.Name] = true
+	projection.ancestors[object.Name] = true
 
 	fields := make([]Field, 0, len(object.Fields))
 	for _, member := range object.Fields {
@@ -147,7 +147,7 @@ func (projection *projector) message(object structure.Object) (string, error) {
 		fields = append(fields, field)
 	}
 
-	delete(projection.visiting, object.Name)
+	delete(projection.ancestors, object.Name)
 	projection.declare(Message{Name: object.Name, Doc: object.Doc, Fields: fields})
 	return object.Name, nil
 }
@@ -163,10 +163,10 @@ func (projection *projector) oneOf(union structure.Union) (string, error) {
 	if union.Discriminator != "" {
 		return "", errDiscriminated
 	}
-	if projection.declared[union.Name] || projection.visiting[union.Name] {
+	if projection.declared[union.Name] || projection.ancestors[union.Name] {
 		return union.Name, nil
 	}
-	projection.visiting[union.Name] = true
+	projection.ancestors[union.Name] = true
 
 	fields := make([]Field, 0, len(union.Variants))
 	for _, variant := range union.Variants {
@@ -177,7 +177,7 @@ func (projection *projector) oneOf(union structure.Union) (string, error) {
 		fields = append(fields, field)
 	}
 
-	delete(projection.visiting, union.Name)
+	delete(projection.ancestors, union.Name)
 	projection.declare(Message{
 		Name:   union.Name,
 		Doc:    union.Doc,
@@ -191,7 +191,7 @@ func (projection *projector) reference(reference structure.Reference) (string, e
 	if reference.Name == "" {
 		return "", errUnnamed
 	}
-	if projection.declared[reference.Name] || projection.visiting[reference.Name] {
+	if projection.declared[reference.Name] || projection.ancestors[reference.Name] {
 		return reference.Name, nil
 	}
 	if reference.Resolve == nil {

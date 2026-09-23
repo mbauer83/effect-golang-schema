@@ -24,13 +24,13 @@ package structure
 // Empty when the description names none, which is what makes this a value
 // rather than an entity.
 func (object Object) Identities() []Field {
-	named := []Field{}
+	identities := []Field{}
 	for _, field := range object.Fields {
 		if field.Identity {
-			named = append(named, field)
+			identities = append(identities, field)
 		}
 	}
-	return named
+	return identities
 }
 
 // Identity is the first field of the identity, and whether there is one.

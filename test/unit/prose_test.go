@@ -19,10 +19,10 @@ func TestProseOnAFieldReachesTheDescription(t *testing.T) {
 		schema.FieldOf("note", schema.Text(),
 			func(detail Detail) string { return detail.Note },
 			func(detail *Detail, note string) { detail.Note = note }).
-			Documented("what the note says"),
+			WithDescription("what the note says"),
 	)
 
-	object, isObject := documented.Documented("one note").Structure().(structure.Object)
+	object, isObject := documented.WithDescription("one note").Structure().(structure.Object)
 	if !isObject {
 		t.Fatalf("expected an object, got %#v", documented.Structure())
 	}
@@ -36,7 +36,7 @@ func TestProseOnAFieldReachesTheDescription(t *testing.T) {
 }
 
 func TestProseOnAUnionAndItsVariantsReachesTheDescription(t *testing.T) {
-	union, isUnion := shapeSchema.Documented("a shape").Structure().(structure.Union)
+	union, isUnion := shapeSchema.WithDescription("a shape").Structure().(structure.Union)
 	if !isUnion {
 		t.Fatalf("expected a union, got %#v", shapeSchema.Structure())
 	}

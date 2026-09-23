@@ -12,46 +12,46 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-func writeUnionBinding(written *bytes.Buffer, shape structure.Union) error {
+func writeUnionBinding(out *bytes.Buffer, shape structure.Union) error {
 	if len(shape.Variants) == 0 {
 		return fmt.Errorf("%s has no variants", shape.Name)
 	}
 	marker := markerName(shape.Name)
 
-	writeDoc(written, shape.Name, shape.Doc)
-	fmt.Fprintf(written, "type %s interface{ %s() }\n", shape.Name, marker)
+	writeDoc(out, shape.Name, shape.Doc)
+	fmt.Fprintf(out, "type %s interface{ %s() }\n", shape.Name, marker)
 
-	fmt.Fprintf(written, "\n// %sSchema describes %s. It is generated from its description.\n",
+	fmt.Fprintf(out, "\n// %sSchema describes %s. It is generated from its description.\n",
 		shape.Name, shape.Name)
-	fmt.Fprintf(written, "var %sSchema = ", shape.Name)
-	fmt.Fprintf(written, "schema.OneOf[%s](%s,\n", shape.Name, strconv.Quote(shape.Name))
+	fmt.Fprintf(out, "var %sSchema = ", shape.Name)
+	fmt.Fprintf(out, "schema.OneOf[%s](%s,\n", shape.Name, strconv.Quote(shape.Name))
 	for _, variant := range shape.Variants {
-		if err := writeVariant(written, shape.Name, variant); err != nil {
+		if err := writeVariant(out, shape.Name, variant); err != nil {
 			return err
 		}
 	}
-	fmt.Fprintf(written, ")")
+	fmt.Fprintf(out, ")")
 	if shape.Doc != "" {
-		fmt.Fprintf(written, ".Documented(%s)", strconv.Quote(shape.Doc))
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(shape.Doc))
 	}
-	fmt.Fprintf(written, "\n")
+	fmt.Fprintf(out, "\n")
 	return nil
 }
 
-func writeVariant(written *bytes.Buffer, union string, variant structure.Variant) error {
+func writeVariant(out *bytes.Buffer, union string, variant structure.Variant) error {
 	object, isObject := variant.Node.(structure.Object)
 	if !isObject {
 		return fmt.Errorf("%s.%s: a variant becomes a Go type, so it is an object",
 			union, variant.Name)
 	}
-	fmt.Fprintf(written, "schema.VariantOf(%s, %sSchema,\n",
+	fmt.Fprintf(out, "schema.VariantOf(%s, %sSchema,\n",
 		strconv.Quote(variant.Name), object.Name)
-	fmt.Fprintf(written, "func(value %s) (%s, bool) { narrowed, is := value.(%s); return narrowed, is },\n",
+	fmt.Fprintf(out, "func(value %s) (%s, bool) { narrowed, is := value.(%s); return narrowed, is },\n",
 		union, object.Name, object.Name)
-	fmt.Fprintf(written, "func(variant %s) %s { return variant })", object.Name, union)
+	fmt.Fprintf(out, "func(variant %s) %s { return variant })", object.Name, union)
 	if variant.Doc != "" {
-		fmt.Fprintf(written, ".Documented(%s)", strconv.Quote(variant.Doc))
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(variant.Doc))
 	}
-	fmt.Fprintf(written, ",\n")
+	fmt.Fprintf(out, ",\n")
 	return nil
 }

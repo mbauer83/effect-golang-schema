@@ -18,12 +18,12 @@ import (
 // without the accessors, which is the only part of a field declaration that
 // needs the type.
 var bookDescription = schema.Struct[dynamic.Value]("Book",
-	schema.DescribedField("title", schema.Text().Constrained(schema.MinLength(1))).
-		Documented("what the book is called"),
-	schema.DescribedField("authors", schema.List(schema.Text()).Constrained(schema.MinItems[string](1))),
-	schema.DescribedField("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))),
-	schema.DescribedField("subtitle", schema.Text()).Optional(),
-	schema.DescribedField("id", schema.UUID()),
+	schema.DynamicField("title", schema.Text().Check(schema.MinLength(1))).
+		WithDescription("what the book is called"),
+	schema.DynamicField("authors", schema.List(schema.Text()).Check(schema.MinItems[string](1))),
+	schema.DynamicField("pages", schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](20000))),
+	schema.DynamicField("subtitle", schema.Text()).Optional(),
+	schema.DynamicField("id", schema.UUID()),
 )
 
 const bookDocument = `{"title":"Zionomicon","authors":["John A. De Goes"],` +
@@ -96,7 +96,7 @@ func TestADescriptionAndItsTypedTwinAgree(t *testing.T) {
 	// it measures; the dynamic path enforces it from what was recorded. They
 	// have to reach the same verdict, or a generated struct would accept what
 	// its description refuses.
-	typed := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](10))
+	typed := schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](10))
 	described := schema.Dynamic(typed.Structure())
 
 	for _, document := range []string{"0", "1", "5", "10", "11"} {
@@ -181,13 +181,13 @@ func TestATypedValueCrossesToADescriptionAndBack(t *testing.T) {
 
 func TestADescriptionsMistakesAreReportedRatherThanPanicking(t *testing.T) {
 	cases := map[string]error{
-		"a nameless member":  schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DescribedField("", schema.Text()))),
-		"two members alike":  schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DescribedField("title", schema.Text()), schema.DescribedField("title", schema.Text()))),
-		"an unusable member": schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DescribedField("title", schema.Schema[string]{}))),
+		"a nameless member":  schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DynamicField("", schema.Text()))),
+		"two members alike":  schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DynamicField("title", schema.Text()), schema.DynamicField("title", schema.Text()))),
+		"an unusable member": schema.Validate(schema.Struct[dynamic.Value]("Book", schema.DynamicField("title", schema.Schema[string]{}))),
 		// A faulted schema has a shape as well as a fault, so a description
 		// that took the shape and dropped the fault would look complete.
 		"a member whose schema is faulted": schema.Validate(
-			schema.Struct[dynamic.Value]("Book", schema.DescribedField("title", schema.Text().Constrained(schema.Matching(`[`))))),
+			schema.Struct[dynamic.Value]("Book", schema.DynamicField("title", schema.Text().Check(schema.Pattern(`[`))))),
 		"no description":  schema.Validate(schema.Dynamic(nil)),
 		"no alternatives": schema.Validate(schema.OneOf[dynamic.Value]("Shape")),
 		// A bound field's getter returns a value and not whether there is one,

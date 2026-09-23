@@ -67,7 +67,7 @@ type Source interface {
 	Skip() error
 }
 
-// Buffering is implemented by a source that can read a whole value without
+// Bufferer is implemented by a source that can read a whole value without
 // being told its shape.
 //
 // It is an optional capability rather than part of Source, because reading
@@ -80,6 +80,6 @@ type Source interface {
 // them. The name may arrive after the fields it selects the meaning of, so
 // there is nothing to do but read the object first and look. A format that
 // cannot says so, rather than a schema pretending the ordering is guaranteed.
-type Buffering interface {
+type Bufferer interface {
 	Buffer() (dynamic.Value, error)
 }

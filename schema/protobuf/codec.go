@@ -21,11 +21,11 @@ import (
 
 // Encode writes a value as a protobuf message.
 func Encode[A any](shape schema.Schema[A], value A) ([]byte, error) {
-	crossed, err := schema.ToDynamic(shape, value)
+	representation, err := schema.ToDynamic(shape, value)
 	if err != nil {
 		return nil, err
 	}
-	return written(shape.Structure(), crossed)
+	return write(shape.Structure(), representation)
 }
 
 // Decode reads a protobuf message as a value.
@@ -38,10 +38,10 @@ func Encode[A any](shape schema.Schema[A], value A) ([]byte, error) {
 // gets refused: a count of at least one rejects the zero the wire implied
 // exactly as it would reject one the wire spelled out.
 func Decode[A any](shape schema.Schema[A], message []byte) (A, error) {
-	crossed, err := read(shape.Structure(), message)
+	representation, err := read(shape.Structure(), message)
 	if err != nil {
 		var absent A
 		return absent, err
 	}
-	return schema.FromDynamic(shape, crossed)
+	return schema.FromDynamic(shape, representation)
 }

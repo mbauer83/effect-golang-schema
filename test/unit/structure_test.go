@@ -114,7 +114,7 @@ func init() {
 			func(node tree) string { return node.Label },
 			func(node *tree, label string) { node.Label = label }),
 		schema.FieldOf("children",
-			schema.List(schema.Deferred(func() schema.Schema[tree] { return treeSchema })),
+			schema.List(schema.Suspend(func() schema.Schema[tree] { return treeSchema })),
 			func(node tree) []tree { return node.Children },
 			func(node *tree, children []tree) { node.Children = children }),
 	)
@@ -144,7 +144,7 @@ func TestAConstraintIsReadableByAWalkerOutsideThisModule(t *testing.T) {
 	// A projection has to be able to see a bound, or it describes a wider type
 	// than the codec accepts. The vocabulary is sealed, so a walker switches
 	// over it and knows it has covered everything.
-	code := schema.Text().Constrained(schema.MinLength(2), schema.Matching(`^[a-z]{2,8}$`))
+	code := schema.Text().Check(schema.MinLength(2), schema.Pattern(`^[a-z]{2,8}$`))
 	shape, isScalar := code.Structure().(structure.Scalar)
 	if !isScalar {
 		t.Fatalf("expected a scalar, got %#v", code.Structure())

@@ -19,7 +19,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "gen: %v\n", fault)
 		os.Exit(1)
 	}
-	written, err := schemagen.WriteBindings("inventory", definitions.Descriptions()...)
+	source, err := schemagen.WriteBindings("inventory", definitions.Descriptions()...)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "gen: %v\n", err)
 		os.Exit(1)
@@ -29,7 +29,7 @@ func main() {
 	// path. A "../" here wrote a file one level up that nothing tracked and
 	// nothing compiled, which left the drift check in CI comparing a file the
 	// generator had not touched.
-	if err := os.WriteFile(schemagen.BindingsFileName, written, 0o644); err != nil {
+	if err := os.WriteFile(schemagen.BindingsFileName, source, 0o644); err != nil {
 		fmt.Fprintf(os.Stderr, "gen: %v\n", err)
 		os.Exit(1)
 	}

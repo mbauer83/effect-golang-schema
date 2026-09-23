@@ -19,10 +19,10 @@ import (
 // several pieces.
 func readRepeated(
 	sequence structure.Sequence,
-	found []occurrence,
+	occurrences []occurrence,
 ) (dynamic.Value, bool, error) {
 	list := dynamic.List{Elements: []dynamic.Value{}}
-	for _, appearance := range found {
+	for _, appearance := range occurrences {
 		elements, err := readElements(sequence.Element, appearance)
 		if err != nil {
 			return nil, false, err
@@ -37,24 +37,24 @@ func readRepeated(
 }
 
 func readElements(element structure.Node, appearance occurrence) ([]dynamic.Value, error) {
-	if !packable(element) || appearance.kind != counted {
+	if !packable(element) || appearance.kind != wireLen {
 		value, err := readSingle(element, appearance)
 		if err != nil {
 			return nil, err
 		}
 		return []dynamic.Value{value}, nil
 	}
-	return decodePacked(element.(structure.Scalar), appearance.bytes)
+	return readPacked(element.(structure.Scalar), appearance.bytes)
 }
 
 // readEntries gathers a map from the repeated message proto3 says it is.
 func readEntries(
 	mapping structure.Mapping,
-	found []occurrence,
+	occurrences []occurrence,
 ) (dynamic.Value, bool, error) {
-	heldValue := dynamic.Object{Fields: []dynamic.Field{}}
-	for _, appearance := range found {
-		if appearance.kind != counted {
+	object := dynamic.Object{Fields: []dynamic.Field{}}
+	for _, appearance := range occurrences {
+		if appearance.kind != wireLen {
 			return nil, false, fmt.Errorf("a map entry is a message, and this is wire type %d",
 				appearance.kind)
 		}
@@ -62,9 +62,9 @@ func readEntries(
 		if err != nil {
 			return nil, false, err
 		}
-		heldValue.Fields = append(heldValue.Fields, dynamic.Field{Name: name, Value: value})
+		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: value})
 	}
-	return heldValue, true, nil
+	return object, true, nil
 }
 
 // readEntry reads one entry: the key in field 1 and the value in field 2.
@@ -76,20 +76,20 @@ func readEntries(
 // the key and the value are there.
 func readEntry(mapping structure.Mapping, bytes []byte) (string, dynamic.Value, error) {
 	known := map[int]bool{1: true, 2: true}
-	found, err := readOccurrences(known, bytes)
+	occurrences, err := readOccurrences(known, bytes)
 	if err != nil {
 		return "", nil, err
 	}
 
 	name := ""
-	if keys := found[1]; len(keys) > 0 {
-		if keys[len(keys)-1].kind != counted {
+	if keys := occurrences[1]; len(keys) > 0 {
+		if keys[len(keys)-1].kind != wireLen {
 			return "", nil, fmt.Errorf("a map key is a string here, and this is wire type %d",
 				keys[len(keys)-1].kind)
 		}
 		name = string(keys[len(keys)-1].bytes)
 	}
-	value, present, err := readMember(structure.Field{Node: mapping.Value, Number: 2}, found[2])
+	value, present, err := readMember(structure.Field{Node: mapping.Value, Number: 2}, occurrences[2])
 	if err != nil {
 		return "", nil, err
 	}

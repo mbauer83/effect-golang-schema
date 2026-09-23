@@ -82,10 +82,10 @@ func TestOnlyTheWidthsTheSpecificationNamesBecomeAFormat(t *testing.T) {
 	// A range a reader can act on is stated by minimum and maximum. Putting
 	// "uint16" in a contract would be telling a client about Go.
 	named := map[string]string{
-		"int32":  projectedFormat(t, schema.Int32().Structure()),
-		"int64":  projectedFormat(t, schema.Int64().Structure()),
-		"float":  projectedFormat(t, schema.Float32().Structure()),
-		"double": projectedFormat(t, schema.Float64().Structure()),
+		"int32":  projectFormat(t, schema.Int32().Structure()),
+		"int64":  projectFormat(t, schema.Int64().Structure()),
+		"float":  projectFormat(t, schema.Float32().Structure()),
+		"double": projectFormat(t, schema.Float64().Structure()),
 	}
 	for expected, got := range named {
 		if got != expected {
@@ -97,13 +97,13 @@ func TestOnlyTheWidthsTheSpecificationNamesBecomeAFormat(t *testing.T) {
 		"int8":   schema.Int8().Structure(),
 		"int":    schema.Int().Structure(),
 	} {
-		if got := projectedFormat(t, node); got != "" {
+		if got := projectFormat(t, node); got != "" {
 			t.Errorf("%s: expected no format, got %q", label, got)
 		}
 	}
 }
 
-func projectedFormat(t *testing.T, node structure.Node) string {
+func projectFormat(t *testing.T, node structure.Node) string {
 	t.Helper()
 	return jsonschema.Project(node).Root.Format
 }
@@ -127,7 +127,7 @@ func TestABoundOutsideTheWidthCannotBeWritten(t *testing.T) {
 	// rejected by the compiler, since 200 is not an int8. What is testable is
 	// that a bound inside the width narrows further and one at the edge is
 	// admitted.
-	narrower := schema.Int8().Constrained(schema.AtMost[int8](100))
+	narrower := schema.Int8().Check(schema.AtMost[int8](100))
 
 	if _, err := schema.DecodeJSON(narrower, []byte("100")); err != nil {
 		t.Fatalf("expected the narrowed bound to admit its own edge, got %v", err)
@@ -177,7 +177,7 @@ func TestEveryWidthRecordsItsOwnRange(t *testing.T) {
 func TestAWidthAndAWireKindCannotBeMadeToDisagree(t *testing.T) {
 	// The wire kind is derived from the width, so there is one answer and the
 	// two cannot contradict each other. Unstated names no number at all.
-	if kind, numeric := structure.Unstated.Numeric(); numeric {
+	if kind, numeric := structure.NoPrecision.Numeric(); numeric {
 		t.Errorf("expected Unstated to name no number, got %v", kind)
 	}
 	for _, width := range widths {
@@ -199,8 +199,8 @@ func TestEachConstructorKnowsHowMuchItAlreadyRecords(t *testing.T) {
 		if known.Call == "" {
 			t.Errorf("%s: has no call", format)
 		}
-		if known.Carries < 0 {
-			t.Errorf("%s: carries %d", format, known.Carries)
+		if known.ConstraintCount < 0 {
+			t.Errorf("%s: carries %d", format, known.ConstraintCount)
 		}
 	}
 	for precision, constructor := range schema.PrecisionConstructors {

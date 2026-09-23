@@ -14,13 +14,13 @@ import (
 )
 
 func reachableShapes(roots []structure.Node) ([]structure.Node, error) {
-	found := &discovery{seen: map[string]bool{}}
+	search := &discovery{seen: map[string]bool{}}
 	for _, root := range roots {
-		if err := found.walk(root); err != nil {
+		if err := search.walk(root); err != nil {
 			return nil, err
 		}
 	}
-	return found.shapes, nil
+	return search.shapes, nil
 }
 
 type discovery struct {
@@ -28,18 +28,18 @@ type discovery struct {
 	seen   map[string]bool
 }
 
-func (found *discovery) walk(node structure.Node) error {
+func (search *discovery) walk(node structure.Node) error {
 	switch shape := node.(type) {
 	case structure.Object:
-		return found.visitNamed(shape.Name, shape, func() error { return found.members(shape) })
+		return search.visit(shape.Name, shape, func() error { return search.members(shape) })
 	case structure.Union:
-		return found.visitNamed(shape.Name, shape, func() error { return found.variants(shape) })
+		return search.visit(shape.Name, shape, func() error { return search.variants(shape) })
 	case structure.Sequence:
-		return found.walk(shape.Element)
+		return search.walk(shape.Element)
 	case structure.Mapping:
-		return found.walk(shape.Value)
+		return search.walk(shape.Value)
 	case structure.Nullable:
-		return found.walk(shape.Inner)
+		return search.walk(shape.Inner)
 	case structure.Reference:
 		// A reference is a name, and the shape it names is reached from
 		// wherever it was declared -- following it here would expand a
@@ -53,37 +53,37 @@ func (found *discovery) walk(node structure.Node) error {
 	}
 }
 
-// visitNamed records a shape once and then walks what it contains. The shape is
+// visit records a shape once and then walks what it contains. The shape is
 // recorded before its parts, so a type appears before the ones it refers to
 // and a recursive description terminates.
-func (found *discovery) visitNamed(name string, shape structure.Node, within func() error) error {
+func (search *discovery) visit(name string, shape structure.Node, descend func() error) error {
 	if name == "" {
 		return fmt.Errorf("a shape with no name cannot become a Go type")
 	}
-	if found.seen[name] {
+	if search.seen[name] {
 		return nil
 	}
-	found.seen[name] = true
-	found.shapes = append(found.shapes, shape)
-	return within()
+	search.seen[name] = true
+	search.shapes = append(search.shapes, shape)
+	return descend()
 }
 
-func (found *discovery) members(shape structure.Object) error {
+func (search *discovery) members(shape structure.Object) error {
 	for _, member := range shape.Fields {
-		if err := found.walk(member.Node); err != nil {
+		if err := search.walk(member.Node); err != nil {
 			return fmt.Errorf("%s.%s: %w", shape.Name, member.Name, err)
 		}
 	}
 	return nil
 }
 
-func (found *discovery) variants(shape structure.Union) error {
+func (search *discovery) variants(shape structure.Union) error {
 	for _, variant := range shape.Variants {
 		if _, isObject := variant.Node.(structure.Object); !isObject {
 			return fmt.Errorf("%s.%s: a variant becomes a Go type, so it is an object",
 				shape.Name, variant.Name)
 		}
-		if err := found.walk(variant.Node); err != nil {
+		if err := search.walk(variant.Node); err != nil {
 			return fmt.Errorf("%s.%s: %w", shape.Name, variant.Name, err)
 		}
 	}

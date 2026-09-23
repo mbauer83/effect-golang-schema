@@ -29,38 +29,38 @@ func dynamicScalar(shape structure.Scalar) Schema[dynamic.Value] {
 		return liftScalar(Time(), toTimestamp, fromTimestamp)
 	default:
 		return liftScalar(
-			constrainText(Formatted(shape.Format), shape.Constraints), toText, fromText)
+			constrainText(TextFormat(shape.Format), shape.Constraints), toText, fromText)
 	}
 }
 
 func dynamicObject(shape structure.Object) Schema[dynamic.Value] {
 	fields := make([]Field[dynamic.Value], 0, len(shape.Fields))
 	for _, member := range shape.Fields {
-		described := DescribedField(member.Name, Dynamic(member.Node)).Documented(member.Doc)
+		field := DynamicField(member.Name, Dynamic(member.Node)).WithDescription(member.Doc)
 		if member.Optional {
-			described = described.Optional()
+			field = field.Optional()
 		}
-		fields = append(fields, described)
+		fields = append(fields, field)
 	}
-	return Struct[dynamic.Value](shape.Name, fields...).Documented(shape.Doc)
+	return Struct[dynamic.Value](shape.Name, fields...).WithDescription(shape.Doc)
 }
 
 func dynamicUnion(shape structure.Union) Schema[dynamic.Value] {
 	variants := make([]Variant[dynamic.Value], 0, len(shape.Variants))
 	for _, alternative := range shape.Variants {
 		variants = append(variants,
-			DescribedVariant(alternative.Name, Dynamic(alternative.Node)).Documented(alternative.Doc))
+			DynamicVariant(alternative.Name, Dynamic(alternative.Node)).WithDescription(alternative.Doc))
 	}
 	if shape.Discriminator != "" {
 		return OneOfBy[dynamic.Value](shape.Name, shape.Discriminator, variants...).
-			Documented(shape.Doc)
+			WithDescription(shape.Doc)
 	}
-	return OneOf[dynamic.Value](shape.Name, variants...).Documented(shape.Doc)
+	return OneOf[dynamic.Value](shape.Name, variants...).WithDescription(shape.Doc)
 }
 
 func dynamicSequence(shape structure.Sequence) Schema[dynamic.Value] {
-	listed := constrainList(List(Dynamic(shape.Element)), shape.Constraints)
-	return liftScalar(listed,
+	codec := constrainList(List(Dynamic(shape.Element)), shape.Constraints)
+	return liftScalar(codec,
 		func(elements []dynamic.Value) (dynamic.Value, error) {
 			return dynamic.List{Elements: elements}, nil
 		},
@@ -73,14 +73,14 @@ func dynamicSequence(shape structure.Sequence) Schema[dynamic.Value] {
 		})
 }
 
-// dynamicMapSchema reads a variable set of keys. The keys come back sorted,
+// dynamicMapping reads a variable set of keys. The keys come back sorted,
 // because Map encodes them sorted and a value that read back in a different
 // order would not round trip.
-func dynamicMapSchema(shape structure.Mapping) Schema[dynamic.Value] {
+func dynamicMapping(shape structure.Mapping) Schema[dynamic.Value] {
 	return liftScalar(Map(Dynamic(shape.Value)),
 		func(entries map[string]dynamic.Value) (dynamic.Value, error) {
 			object := dynamic.Object{Fields: make([]dynamic.Field, 0, len(entries))}
-			for _, key := range sortedKeys(entries) {
+			for _, key := range sortKeys(entries) {
 				object.Fields = append(object.Fields,
 					dynamic.Field{Name: key, Value: entries[key]})
 			}
@@ -120,10 +120,10 @@ func dynamicNullable(shape structure.Nullable) Schema[dynamic.Value] {
 // description that refers to it is still being assembled.
 func dynamicReference(shape structure.Reference) Schema[dynamic.Value] {
 	if shape.Resolve == nil {
-		return faultedSchema[dynamic.Value](shape,
+		return faultySchema[dynamic.Value](shape,
 			fail("refers to a shape that cannot be resolved", nil))
 	}
-	return Deferred(func() Schema[dynamic.Value] { return Dynamic(shape.Resolve()) })
+	return Suspend(func() Schema[dynamic.Value] { return Dynamic(shape.Resolve()) })
 }
 
 // liftScalar carries a typed schema into the universal representation. The

@@ -158,7 +158,7 @@ func TestAFormatThatCannotReadAnObjectWholeSaysSo(t *testing.T) {
 func TestTheBufferingCapabilityIsTheOneASourceIsAskedFor(t *testing.T) {
 	// The capability is named so a format author can implement it deliberately
 	// rather than discovering by a refusal that something was expected.
-	var buffering schema.Buffering = &bufferingSource{}
+	var buffering schema.Bufferer = &bufferSource{}
 	held, err := buffering.Buffer()
 	if err != nil {
 		t.Fatal(err)
@@ -168,10 +168,10 @@ func TestTheBufferingCapabilityIsTheOneASourceIsAskedFor(t *testing.T) {
 	}
 }
 
-// bufferingSource is the smallest thing that can hand over a value it was not
+// bufferSource is the smallest thing that can hand over a value it was not
 // told the shape of, which is all the capability asks.
-type bufferingSource struct{ traceSource }
+type bufferSource struct{ traceSource }
 
-func (*bufferingSource) Buffer() (dynamic.Value, error) {
+func (*bufferSource) Buffer() (dynamic.Value, error) {
 	return dynamic.Text{Value: "read whole"}, nil
 }

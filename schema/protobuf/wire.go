@@ -20,15 +20,15 @@ import (
 type wireType uint8
 
 const (
-	// varying is a variable-length integer: ints, bools, enums.
-	varying wireType = 0
-	// eightBytes is a fixed 64-bit value: a double, or a fixed64.
-	eightBytes wireType = 1
-	// counted is a length and then that many bytes: strings, bytes, messages,
+	// wireVarint is a variable-length integer: ints, bools, enums.
+	wireVarint wireType = 0
+	// wireI64 is a fixed 64-bit value: a double, or a fixed64.
+	wireI64 wireType = 1
+	// wireLen is a length and then that many bytes: strings, bytes, messages,
 	// and a packed repeated field.
-	counted wireType = 2
-	// fourBytes is a fixed 32-bit value: a float, or a fixed32.
-	fourBytes wireType = 5
+	wireLen wireType = 2
+	// wireI32 is a fixed 32-bit value: a float, or a fixed32.
+	wireI32 wireType = 5
 )
 
 // writer accumulates one message's bytes.
@@ -51,7 +51,7 @@ func (into *writer) tag(number int, kind wireType) {
 }
 
 func (into *writer) block(number int, payload []byte) {
-	into.tag(number, counted)
+	into.tag(number, wireLen)
 	into.varint(uint64(len(payload)))
 	into.bytes = append(into.bytes, payload...)
 }
@@ -83,11 +83,11 @@ func (from *reader) done() bool {
 }
 
 func (from *reader) varint() (uint64, error) {
-	value, read := binary.Uvarint(from.bytes[from.at:])
-	if read <= 0 {
+	value, size := binary.Uvarint(from.bytes[from.at:])
+	if size <= 0 {
 		return 0, errTruncated
 	}
-	from.at += read
+	from.at += size
 	return value, nil
 }
 
@@ -112,9 +112,9 @@ func (from *reader) block() ([]byte, error) {
 	if uint64(len(from.bytes)-from.at) < length {
 		return nil, errTruncated
 	}
-	bytesEntry := from.bytes[from.at : from.at+int(length)]
+	payload := from.bytes[from.at : from.at+int(length)]
 	from.at += int(length)
-	return bytesEntry, nil
+	return payload, nil
 }
 
 func (from *reader) fixed64() (uint64, error) {
@@ -142,16 +142,16 @@ func (from *reader) fixed32() (uint32, error) {
 // over rather than being an error.
 func (from *reader) skip(kind wireType) error {
 	switch kind {
-	case varying:
+	case wireVarint:
 		_, err := from.varint()
 		return err
-	case eightBytes:
+	case wireI64:
 		_, err := from.fixed64()
 		return err
-	case fourBytes:
+	case wireI32:
 		_, err := from.fixed32()
 		return err
-	case counted:
+	case wireLen:
 		_, err := from.block()
 		return err
 	default:

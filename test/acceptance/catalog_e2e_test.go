@@ -61,7 +61,7 @@ func TestTheCatalogueProgramLoadsNormalisesAndPublishes(t *testing.T) {
 		t.Fatalf("unexpected exit: %+v", exit)
 	}
 
-	if report.Books != 3 || report.Shelved != 1 {
+	if report.Books != 3 || report.OnShelf != 1 {
 		t.Fatalf("unexpected report: %#v", report)
 	}
 	// Every named shape is described once and referred to thereafter, which is

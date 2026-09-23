@@ -12,8 +12,8 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-func deriveNode(node structure.Node, keeping supplied) (structure.Node, error) {
-	if reference, namedValue := node.(structure.Reference); namedValue && reference.Resolve == nil {
+func deriveNode(node structure.Node, policy keepPolicy) (structure.Node, error) {
+	if reference, isReference := node.(structure.Reference); isReference && reference.Resolve == nil {
 		// A name with nothing behind it cannot be derived from, and passing it
 		// through would publish a shape whose contents nobody can see.
 		return nil, fmt.Errorf("%q: %w", reference.Name, ErrUnresolved)
@@ -25,12 +25,12 @@ func deriveNode(node structure.Node, keeping supplied) (structure.Node, error) {
 
 	fields := make([]structure.Field, 0, len(object.Fields))
 	for _, field := range object.Fields {
-		keptFielded, keep, err := keptField(field, keeping)
+		survivor, keep, err := deriveField(field, policy)
 		if err != nil {
 			return nil, fmt.Errorf("field %q of %s: %w", field.Name, object.Name, err)
 		}
 		if keep {
-			fields = append(fields, keptFielded)
+			fields = append(fields, survivor)
 		}
 	}
 	if len(fields) == 0 {
@@ -40,26 +40,26 @@ func deriveNode(node structure.Node, keeping supplied) (structure.Node, error) {
 	return structure.Object{Name: object.Name, Doc: object.Doc, Fields: fields}, nil
 }
 
-// keptField decides one field's fate, and what it looks like if it survives.
-func keptField(
+// deriveField decides one field's fate, and what it looks like if it survives.
+func deriveField(
 	field structure.Field,
-	keeping supplied,
+	policy keepPolicy,
 ) (structure.Field, bool, error) {
 	switch {
 	case field.Computed:
 		return structure.Field{}, false, nil
-	case field.Identity && !keeping.keepIdentity:
+	case field.Identity && !policy.keepIdentity:
 		return structure.Field{}, false, nil
 	}
 
-	entity, nested := collectedEntity(field.Node)
-	if nested && !keeping.reachIntoEntities {
+	entity, nested := entityInside(field.Node)
+	if nested && !policy.reachIntoEntities {
 		return structure.Field{}, false, nil
 	}
 	if nested {
 		// The entity's own fields are derived the same way, so a computed
 		// column on a child is left out of the child's shape too.
-		inner, err := derivedWithin(field.Node, entity, keeping)
+		inner, err := deriveWithin(field.Node, entity, policy)
 		if err != nil {
 			return structure.Field{}, false, err
 		}
@@ -71,27 +71,27 @@ func keptField(
 	// it, so carrying the marks through would say something untrue about it.
 	field.Identity = false
 	field.Computed = false
-	if keeping.partial {
+	if policy.partial {
 		field.Optional = true
 	}
 	return field, true, nil
 }
 
-// derivedWithin derives a nested entity, keeping whatever wraps it.
+// deriveWithin derives a nested entity, keeping whatever wraps it.
 //
 // A list of order lines is a list of a derived order line, and a nullable one is
 // a nullable derived one. The wrapper survives because it says how many there
 // are and whether there is one, which a derivation has no business changing.
-func derivedWithin(
+func deriveWithin(
 	node structure.Node,
 	entity structure.Object,
-	keeping supplied,
+	policy keepPolicy,
 ) (structure.Node, error) {
 	// An entity nested inside another is created with its parent, so its own
 	// identity is its to supply -- but it is never *updated* through the
 	// parent, because it has an identity of its own to be selected by. Keeping
 	// the outer decision is what makes that fall out.
-	inner, err := deriveNode(entity, keeping)
+	inner, err := deriveNode(entity, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func rewrapNode(node structure.Node, inner structure.Node) (structure.Node, erro
 	}
 }
 
-// collectedEntity is the entity a field carries, through whatever wraps it,
+// entityInside is the entity a field carries, through whatever wraps it,
 // including a map.
 //
 // Deliberately not structure.EntityBehind, and the difference is the map. That
@@ -129,7 +129,7 @@ func rewrapNode(node structure.Node, inner structure.Node) (structure.Node, erro
 //
 // Two questions that agree about everything except a map, so they are two
 // functions rather than one with a flag.
-func collectedEntity(node structure.Node) (structure.Object, bool) {
+func entityInside(node structure.Node) (structure.Object, bool) {
 	switch shape := node.(type) {
 	case structure.Object:
 		return shape, shape.IsEntity()
@@ -137,11 +137,11 @@ func collectedEntity(node structure.Node) (structure.Object, bool) {
 		object, isObject := resolveObject(shape)
 		return object, isObject && object.IsEntity()
 	case structure.Sequence:
-		return collectedEntity(shape.Element)
+		return entityInside(shape.Element)
 	case structure.Nullable:
-		return collectedEntity(shape.Inner)
+		return entityInside(shape.Inner)
 	case structure.Mapping:
-		return collectedEntity(shape.Value)
+		return entityInside(shape.Value)
 	default:
 		return structure.Object{}, false
 	}

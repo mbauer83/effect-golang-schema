@@ -16,9 +16,9 @@ package structure
 type Precision uint8
 
 const (
-	// Unstated is a scalar whose Go representation the description does not
+	// NoPrecision is a scalar whose Go representation the description does not
 	// pin down: the default for its kind.
-	Unstated Precision = iota
+	NoPrecision Precision = iota
 	Int8Bits
 	Int16Bits
 	Int32Bits
@@ -40,7 +40,7 @@ const (
 // there is one answer, so the two cannot disagree.
 func (precision Precision) Numeric() (Kind, bool) {
 	switch precision {
-	case Unstated:
+	case NoPrecision:
 		return Text, false
 	case Float32Bits, Float64Bits:
 		return Number, true

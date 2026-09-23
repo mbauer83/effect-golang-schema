@@ -18,7 +18,7 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/protobuf"
 )
 
-func consigned() consignment {
+func sampleConsignment() consignment {
 	note := "handle with care"
 	return consignment{
 		Reference: "8f14e45f-ceea-467a-a4fb-1a9c73d0f2b1",
@@ -38,7 +38,7 @@ func canonical(t *testing.T, message []byte) *dynamicpb.Message {
 	if err != nil {
 		t.Fatal(err)
 	}
-	read := dynamicpb.NewMessage(protoCompiled(t, document))
+	read := dynamicpb.NewMessage(compileProto(t, document))
 	if err := proto.Unmarshal(message, read); err != nil {
 		t.Fatalf("protobuf could not read what this wrote: %v", err)
 	}
@@ -46,14 +46,14 @@ func canonical(t *testing.T, message []byte) *dynamicpb.Message {
 }
 
 func TestWhatThisWritesIsWhatProtobufReads(t *testing.T) {
-	written, err := protobuf.Encode(consignmentSchema, consigned())
+	written, err := protobuf.Encode(consignmentSchema, sampleConsignment())
 	if err != nil {
 		t.Fatal(err)
 	}
 	read := canonical(t, written)
 	fields := read.Descriptor().Fields()
 
-	if got := read.Get(fields.ByName("reference")).String(); got != consigned().Reference {
+	if got := read.Get(fields.ByName("reference")).String(); got != sampleConsignment().Reference {
 		t.Errorf("unexpected reference: %q", got)
 	}
 	if got := read.Get(fields.ByName("weight")).Float(); got != 12.5 {
@@ -82,7 +82,7 @@ func TestWhatProtobufWritesIsWhatThisReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := protoCompiled(t, document)
+	descriptor := compileProto(t, document)
 	built := dynamicpb.NewMessage(descriptor)
 	fields := descriptor.Fields()
 
@@ -128,7 +128,7 @@ func TestAValueTheDescriptionRefusesIsRefusedOnTheWayInAsOnTheWayOut(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	descriptor := protoCompiled(t, document)
+	descriptor := compileProto(t, document)
 	built := dynamicpb.NewMessage(descriptor)
 	fields := descriptor.Fields()
 	built.Set(fields.ByName("reference"),
@@ -145,7 +145,7 @@ func TestAValueTheDescriptionRefusesIsRefusedOnTheWayInAsOnTheWayOut(t *testing.
 	}
 
 	// And a bad reference on the way out, before a byte is written.
-	broken := consigned()
+	broken := sampleConsignment()
 	broken.Reference = "not a uuid"
 	if _, err := protobuf.Encode(consignmentSchema, broken); err == nil {
 		t.Fatal("expected the description to refuse the reference")

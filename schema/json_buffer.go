@@ -37,10 +37,10 @@ func (source *jsonSource) Buffer() (dynamic.Value, error) {
 	}
 }
 
-// bufferedNumber reads a number as whole where it is written as one. A number
+// bufferNumber reads a number as whole where it is written as one. A number
 // too large for an int64 is kept as a number rather than refused: what it is
 // for is up to the schema that reads it back.
-func bufferedNumber(token jsontext.Token) (dynamic.Value, error) {
+func bufferNumber(token jsontext.Token) (dynamic.Value, error) {
 	if !strings.ContainsAny(token.String(), ".eE") {
 		if whole, err := token.Int(); err == nil {
 			return dynamic.Integer{Value: whole}, nil
@@ -66,11 +66,11 @@ func (source *jsonSource) bufferObject() (dynamic.Value, error) {
 		// The name is taken out of the token before anything else is read: a
 		// token is only good until the next call to the decoder.
 		name := token.String()
-		buffered, err := source.Buffer()
+		value, err := source.Buffer()
 		if err != nil {
 			return nil, within(name, err)
 		}
-		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: buffered})
+		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: value})
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
 		return nil, readFailure("reading the end of an object", err)
@@ -84,11 +84,11 @@ func (source *jsonSource) bufferList() (dynamic.Value, error) {
 	}
 	list := dynamic.List{Elements: []dynamic.Value{}}
 	for source.decoder.PeekKind() != ']' {
-		buffered, err := source.Buffer()
+		value, err := source.Buffer()
 		if err != nil {
 			return nil, within(listIndex(len(list.Elements)), err)
 		}
-		list.Elements = append(list.Elements, buffered)
+		list.Elements = append(list.Elements, value)
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
 		return nil, readFailure("reading the end of a list", err)
@@ -111,6 +111,6 @@ func (source *jsonSource) bufferScalar(kind jsontext.Kind) (dynamic.Value, error
 	case 't', 'f':
 		return dynamic.Boolean{Value: token.Bool()}, nil
 	default:
-		return bufferedNumber(token)
+		return bufferNumber(token)
 	}
 }

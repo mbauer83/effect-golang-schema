@@ -67,7 +67,7 @@ func ExampleOneOf() {
 
 // Deferred is how a recursive type is declared, because Go cannot refer to a
 // variable in its own initialiser.
-func ExampleDeferred() {
+func ExampleSuspend() {
 	type Node struct {
 		Label    string
 		Children []Node
@@ -79,7 +79,7 @@ func ExampleDeferred() {
 			func(node Node) string { return node.Label },
 			func(node *Node, label string) { node.Label = label }),
 		schema.FieldOf("children",
-			schema.List(schema.Deferred(func() schema.Schema[Node] { return nodeSchema })),
+			schema.List(schema.Suspend(func() schema.Schema[Node] { return nodeSchema })),
 			func(node Node) []Node { return node.Children },
 			func(node *Node, children []Node) { node.Children = children }),
 	)

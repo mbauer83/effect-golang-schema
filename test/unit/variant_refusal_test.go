@@ -22,8 +22,8 @@ func TestADescriptionWithNothingToDeriveFromSaysSo(t *testing.T) {
 	// almost always a mistake in the marks rather than a shape worth
 	// publishing, so it is named.
 	allComputed := schema.Struct[dynamic.Value]("Stamped",
-		schema.DescribedField("at", schema.Time()).Computed(),
-		schema.DescribedField("by", schema.Text()).Computed(),
+		schema.DynamicField("at", schema.Time()).Computed(),
+		schema.DynamicField("by", schema.Text()).Computed(),
 	)
 	if _, err := variant.Create(allComputed.Structure()); err == nil {
 		t.Error("expected a shape with nothing left to be refused")

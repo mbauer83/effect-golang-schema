@@ -29,7 +29,7 @@ type everyShape struct {
 type Detail struct{ Note string }
 
 var everyShapeSchema = schema.Struct[everyShape]("EveryShape",
-	schema.FieldOf("text", schema.Formatted("free-text"),
+	schema.FieldOf("text", schema.TextFormat("free-text"),
 		func(value everyShape) string { return value.Text },
 		func(value *everyShape, text string) { value.Text = text }),
 	schema.FieldOf("whole", schema.Int(),
@@ -62,8 +62,8 @@ var everyShapeSchema = schema.Struct[everyShape]("EveryShape",
 		func(value everyShape) []int { return value.Nested },
 		func(value *everyShape, nested []int) { value.Nested = nested }),
 	schema.FieldOf("detail",
-		detailSchema.Named("Detail").
-			Documented("one note, described once and referred to thereafter"),
+		detailSchema.WithName("Detail").
+			WithDescription("one note, described once and referred to thereafter"),
 		func(value everyShape) Detail { return value.Detail },
 		func(value *everyShape, detail Detail) { value.Detail = detail }),
 )

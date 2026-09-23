@@ -80,11 +80,11 @@ func OptionalFieldOf[A, B any](
 			return ok
 		},
 		encode: func(value A, into Sink) error {
-			geted, ok := get(value)
+			member, ok := get(value)
 			if !ok {
 				return into.Null()
 			}
-			return Encode(shape, geted, into)
+			return Encode(shape, member, into)
 		},
 		decode: func(target *A, from Source) error {
 			absent, err := from.Null()
@@ -104,13 +104,13 @@ func OptionalFieldOf[A, B any](
 	}
 }
 
-// Documented attaches prose a projection can carry into its output.
-func (field Field[A]) Documented(doc string) Field[A] {
+// WithDescription attaches prose a projection can carry into its output.
+func (field Field[A]) WithDescription(doc string) Field[A] {
 	field.doc = doc
 	return field
 }
 
-// Numbered gives the field a number, for a wire that identifies fields by
+// WithNumber gives the field a number, for a wire that identifies fields by
 // number rather than by name.
 //
 // It is a modifier and not a parameter of FieldOf because most schemas never
@@ -118,7 +118,7 @@ func (field Field[A]) Documented(doc string) Field[A] {
 // in all of them. Where one is needed it is required rather than derived: a
 // number is what protobuf's compatibility rests on, so the description is where
 // it belongs and declaration order is not a stable substitute.
-func (field Field[A]) Numbered(number int) Field[A] {
+func (field Field[A]) WithNumber(number int) Field[A] {
 	if number < 1 {
 		field.fault = fail("a field number is at least 1", nil)
 		return field
@@ -152,7 +152,7 @@ func (field Field[A]) Computed() Field[A] {
 	return field
 }
 
-// Defaulting says what the field holds when nobody gives it a value.
+// WithDefault says what the field holds when nobody gives it a value.
 //
 // The value is a dynamic.Value rather than a Go value because a description
 // need not have a Go type at all, and because every projection already knows
@@ -163,17 +163,17 @@ func (field Field[A]) Computed() Field[A] {
 // default *is* -- and a computed field with no default is a projection to
 // storage's problem rather than a declaration mistake, so the two are declared
 // separately and each says its own thing.
-func (field Field[A]) Defaulting(value dynamic.Value) Field[A] {
-	field.fallback = structure.DefaultTo{Value: value}
+func (field Field[A]) WithDefault(value dynamic.Value) Field[A] {
+	field.fallback = structure.DefaultValue{Value: value}
 	return field
 }
 
-// DefaultingToNow says the field holds the moment the row is written.
+// WithDefaultNow says the field holds the moment the row is written.
 //
-// Its own method rather than a value passed to Defaulting, because it is an
+// Its own method rather than a value passed to WithDefault, because it is an
 // expression and not a value: there is no instant to put in a description that
 // would still be the right one when the row is written.
-func (field Field[A]) DefaultingToNow() Field[A] {
+func (field Field[A]) WithDefaultNow() Field[A] {
 	field.fallback = structure.DefaultNow{}
 	return field
 }
@@ -199,10 +199,10 @@ func (field Field[A]) Optional() Field[A] {
 			"a bound field states presence in its getter; use OptionalFieldOf", nil)
 		return field
 	}
-	return field.tolerantOfAbsence()
+	return field.tolerateAbsence()
 }
 
-// tolerantOfAbsence is what makes a field optional on the way *in* as well as
+// tolerateAbsence is what makes a field optional on the way *in* as well as
 // out.
 //
 // Saying a field is optional used to change only the description and the
@@ -216,7 +216,7 @@ func (field Field[A]) Optional() Field[A] {
 // OptionalFieldOf does not come through here: it states absence in its getter
 // and consults Null in its own decoder, so wrapping it again would consume the
 // absence twice.
-func (field Field[A]) tolerantOfAbsence() Field[A] {
+func (field Field[A]) tolerateAbsence() Field[A] {
 	inner := field.decode
 	if inner == nil {
 		return field

@@ -15,25 +15,25 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// written is one message's bytes.
-func written(node structure.Node, value dynamic.Value) ([]byte, error) {
+// write is one message's bytes.
+func write(node structure.Node, value dynamic.Value) ([]byte, error) {
 	switch shape := node.(type) {
 	case structure.Object:
-		return writtenObject(shape, value)
+		return writeObject(shape, value)
 	case structure.Union:
-		return writtenUnion(shape, value)
+		return writeUnion(shape, value)
 	case structure.Reference:
 		if shape.Resolve == nil {
 			return nil, fmt.Errorf("%q is referred to and not described", shape.Name)
 		}
-		return written(shape.Resolve(), value)
+		return write(shape.Resolve(), value)
 	default:
 		return nil, fmt.Errorf("protobuf transfers messages, and %T is not one", node)
 	}
 }
 
-func writtenObject(object structure.Object, value dynamic.Value) ([]byte, error) {
-	heldValue, isObject := value.(dynamic.Object)
+func writeObject(object structure.Object, value dynamic.Value) ([]byte, error) {
+	record, isObject := value.(dynamic.Object)
 	if !isObject {
 		return nil, fmt.Errorf("%s is a message, and the value is a %T", object.Name, value)
 	}
@@ -43,23 +43,23 @@ func writtenObject(object structure.Object, value dynamic.Value) ([]byte, error)
 		if member.Number < 1 {
 			return nil, fmt.Errorf("field %q of %s: %w", member.Name, object.Name, errUnnumbered)
 		}
-		carried, present := heldValue.Member(member.Name)
+		memberValue, present := record.Member(member.Name)
 		if !present {
 			continue
 		}
-		if err := field(into, member, carried); err != nil {
+		if err := writeField(into, member, memberValue); err != nil {
 			return nil, fmt.Errorf("field %q of %s: %w", member.Name, object.Name, err)
 		}
 	}
 	return into.bytes, nil
 }
 
-// writtenUnion writes the chosen variant, and only it.
+// writeUnion writes the chosen variant, and only it.
 //
 // A union's value is the one-member object its wire form is, and the member's
 // name is the variant's -- so the chosen variant is what the value already
 // says, and the number is what the description adds.
-func writtenUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
+func writeUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 	if union.Discriminator != "" {
 		return nil, errDiscriminated
 	}
@@ -81,7 +81,7 @@ func writtenUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 			return nil, fmt.Errorf("variant %q of %s: %w", variant.Name, union.Name, errUnnumbered)
 		}
 		into := &writer{}
-		err := field(into,
+		err := writeField(into,
 			structure.Field{Name: variant.Name, Node: variant.Node, Number: variant.Number},
 			chosen.Value)
 		return into.bytes, err
@@ -89,13 +89,13 @@ func writtenUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 	return nil, fmt.Errorf("%s has no variant named %q", union.Name, chosen.Name)
 }
 
-// field writes one field: its tag, and its value in the layout its shape has.
-func field(into *writer, member structure.Field, value dynamic.Value) error {
+// writeField writes one writeField: its tag, and its value in the layout its shape has.
+func writeField(into *writer, member structure.Field, value dynamic.Value) error {
 	switch shape := member.Node.(type) {
 	case structure.Sequence:
-		return encodeRepeated(into, member.Number, shape, value)
+		return writeRepeated(into, member.Number, shape, value)
 	case structure.Mapping:
-		return entries(into, member.Number, shape, value)
+		return writeEntries(into, member.Number, shape, value)
 	case structure.Nullable:
 		if _, absent := value.(dynamic.Absent); absent {
 			// Null is the field not being on the wire. proto3 has no null: a
@@ -103,25 +103,25 @@ func field(into *writer, member structure.Field, value dynamic.Value) error {
 			// is the same distinction.
 			return nil
 		}
-		return field(into, structure.Field{
+		return writeField(into, structure.Field{
 			Name: member.Name, Node: shape.Inner, Number: member.Number,
 			Optional: true,
 		}, value)
 	default:
-		return single(into, member, value)
+		return writeSingle(into, member, value)
 	}
 }
 
-// single writes one non-repeated value.
-func single(into *writer, member structure.Field, value dynamic.Value) error {
+// writeSingle writes one non-repeated value.
+func writeSingle(into *writer, member structure.Field, value dynamic.Value) error {
 	if _, absent := value.(dynamic.Absent); absent {
 		return nil
 	}
 	switch shape := member.Node.(type) {
 	case structure.Scalar:
-		return scalar(into, member.Number, shape, value, member.Optional)
+		return writeScalar(into, member.Number, shape, value, member.Optional)
 	case structure.Object, structure.Union, structure.Reference:
-		nested, err := written(member.Node, value)
+		nested, err := write(member.Node, value)
 		if err != nil {
 			return err
 		}
@@ -132,13 +132,13 @@ func single(into *writer, member structure.Field, value dynamic.Value) error {
 	}
 }
 
-// encodeRepeated writes a list.
+// writeRepeated writes a list.
 //
 // Numeric and boolean elements are packed into one length-delimited field,
 // which is what proto3 does by default and what a reader expects; strings,
 // bytes and messages are written one field each, because they are already
 // length-delimited and packing them would be a second length nobody reads.
-func encodeRepeated(
+func writeRepeated(
 	into *writer,
 	number int,
 	sequence structure.Sequence,
@@ -149,10 +149,10 @@ func encodeRepeated(
 		return fmt.Errorf("a repeated field takes a list, and the value is a %T", value)
 	}
 	if packable(sequence.Element) {
-		return encodePacked(into, number, sequence.Element, list)
+		return writePacked(into, number, sequence.Element, list)
 	}
 	for index, element := range list.Elements {
-		if err := single(into,
+		if err := writeSingle(into,
 			structure.Field{Node: sequence.Element, Number: number}, element); err != nil {
 			return fmt.Errorf("element %d: %w", index, err)
 		}
@@ -160,9 +160,9 @@ func encodeRepeated(
 	return nil
 }
 
-// encodePacked writes the elements into one length-delimited field, with no tag of
+// writePacked writes the elements into one length-delimited field, with no tag of
 // their own.
-func encodePacked(
+func writePacked(
 	into *writer,
 	number int,
 	element structure.Node,
@@ -176,7 +176,7 @@ func encodePacked(
 	elements := &writer{}
 	scalar := element.(structure.Scalar)
 	for index, value := range list.Elements {
-		if err := packedOne(elements, scalar, value); err != nil {
+		if err := writePackedElement(elements, scalar, value); err != nil {
 			return fmt.Errorf("element %d: %w", index, err)
 		}
 	}
@@ -199,9 +199,9 @@ func packable(element structure.Node) bool {
 	}
 }
 
-// entries writes a map as the repeated message proto3 says it is: one message
+// writeEntries writes a map as the repeated message proto3 says it is: one message
 // per entry, with the key in field 1 and the value in field 2.
-func entries(
+func writeEntries(
 	into *writer,
 	number int,
 	mapping structure.Mapping,
@@ -213,11 +213,11 @@ func entries(
 	}
 	for _, entry := range object.Fields {
 		pair := &writer{}
-		if err := scalar(pair, 1,
+		if err := writeScalar(pair, 1,
 			structure.Scalar{Kind: structure.Text}, dynamic.Text{Value: entry.Name}, false); err != nil {
 			return err
 		}
-		if err := single(pair,
+		if err := writeSingle(pair,
 			structure.Field{Node: mapping.Value, Number: 2}, entry.Value); err != nil {
 			return fmt.Errorf("entry %q: %w", entry.Name, err)
 		}

@@ -21,19 +21,19 @@ var AvailabilitySchema = schema.OneOf[Availability]("Availability",
 			return stock, is
 		},
 		func(stock InStock) Availability { return stock }).
-		Documented("on the shelf, with how many copies"),
-	schema.VariantOf("awaited", AwaitedSchema,
-		func(availability Availability) (Awaited, bool) {
-			awaited, is := availability.(Awaited)
-			return awaited, is
+		WithDescription("on the shelf, with how many copies"),
+	schema.VariantOf("awaited", OnOrderSchema,
+		func(availability Availability) (OnOrder, bool) {
+			onOrder, is := availability.(OnOrder)
+			return onOrder, is
 		},
-		func(awaited Awaited) Availability { return awaited }).
-		Documented("not yet arrived, with when it is expected"),
+		func(onOrder OnOrder) Availability { return onOrder }).
+		WithDescription("not yet arrived, with when it is expected"),
 	schema.VariantOf("discontinued", DiscontinuedSchema,
 		func(availability Availability) (Discontinued, bool) {
 			gone, is := availability.(Discontinued)
 			return gone, is
 		},
 		func(gone Discontinued) Availability { return gone }).
-		Documented("will not be restocked"),
+		WithDescription("will not be restocked"),
 )

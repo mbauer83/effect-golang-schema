@@ -14,7 +14,7 @@ import (
 // Projection is total. Every structure this module can build has a rendering,
 // including one that carries no documentation at all.
 func Project(node structure.Node) Document {
-	projection := &projector{components: map[string]Node{}, visiting: map[string]bool{}}
+	projection := &projector{components: map[string]Node{}, ancestors: map[string]bool{}}
 	root := projection.node(node)
 	return Document{Root: root, Components: projection.components}
 }
@@ -22,21 +22,21 @@ func Project(node structure.Node) Document {
 // ProjectAll projects several structures against one component set, which is
 // what an OpenAPI document needs: every endpoint's shapes share the components.
 func ProjectAll(nodes ...structure.Node) ([]Node, map[string]Node) {
-	return ProjectAllReferencing(ReferenceTo, nodes...)
+	return ProjectAllWithPointer(ReferenceTo, nodes...)
 }
 
-// ProjectAllReferencing is ProjectAll with the caller's own pointer form.
+// ProjectAllWithPointer is ProjectAll with the caller's own pointer form.
 //
 // A standalone schema keeps its components under $defs; an OpenAPI document
 // keeps them under #/components/schemas. The shapes are identical, so only the
 // pointer differs and only the enclosing document knows what it should be.
-func ProjectAllReferencing(
+func ProjectAllWithPointer(
 	pointer func(string) string,
 	nodes ...structure.Node,
 ) ([]Node, map[string]Node) {
 	projection := &projector{
 		components: map[string]Node{},
-		visiting:   map[string]bool{},
+		ancestors:  map[string]bool{},
 		reference:  pointer,
 	}
 	projected := make([]Node, 0, len(nodes))
@@ -53,9 +53,9 @@ func ReferenceTo(name string) string {
 
 type projector struct {
 	components map[string]Node
-	// visiting guards against a recursive type: a name reached while it is
+	// ancestors guards against a recursive type: a name reached while it is
 	// still being described is referred to rather than expanded again.
-	visiting map[string]bool
+	ancestors map[string]bool
 	// reference builds the pointer for a component name, so an OpenAPI
 	// projection can point at its own components section instead of $defs.
 	reference func(string) string
@@ -88,7 +88,7 @@ func (projection *projector) node(node structure.Node) Node {
 		// has no type keyword to widen.
 		return Node{OneOf: []Node{projection.node(shape.Inner), {Type: "null"}}}
 	case structure.Reference:
-		return projection.reference0(shape)
+		return projection.referenceNode(shape)
 	default:
 		// The structure set is sealed, so this is unreachable unless a node was
 		// added without a projection for it. Saying so beats rendering nothing.
@@ -100,48 +100,48 @@ func (projection *projector) object(shape structure.Object) Node {
 	if shape.Name == "" {
 		return projection.inlineObject(shape)
 	}
-	if projection.visiting[shape.Name] {
+	if projection.ancestors[shape.Name] {
 		return Node{Ref: projection.pointer(shape.Name)}
 	}
 	if _, described := projection.components[shape.Name]; described {
 		return Node{Ref: projection.pointer(shape.Name)}
 	}
 
-	projection.visiting[shape.Name] = true
-	described := projection.inlineObject(shape)
-	delete(projection.visiting, shape.Name)
-	projection.components[shape.Name] = described
+	projection.ancestors[shape.Name] = true
+	schema := projection.inlineObject(shape)
+	delete(projection.ancestors, shape.Name)
+	projection.components[shape.Name] = schema
 	return Node{Ref: projection.pointer(shape.Name)}
 }
 
 func (projection *projector) inlineObject(shape structure.Object) Node {
-	described := Node{Type: "object", Description: shape.Doc}
+	schema := Node{Type: "object", Description: shape.Doc}
 	for _, field := range shape.Fields {
 		member := projection.node(field.Node)
 		if field.Doc != "" {
 			member.Description = field.Doc
 		}
-		described.Properties = append(described.Properties, Property{Name: field.Name, Schema: member})
+		schema.Properties = append(schema.Properties, Property{Name: field.Name, Schema: member})
 		if !field.Optional {
-			described.Required = append(described.Required, field.Name)
+			schema.Required = append(schema.Required, field.Name)
 		}
 	}
-	return described
+	return schema
 }
 
 func (projection *projector) union(shape structure.Union) Node {
 	describe := func() Node {
 		if shape.Discriminator != "" {
-			return projection.projectTaggedUnion(shape)
+			return projection.taggedUnion(shape)
 		}
-		described := Node{Description: shape.Doc}
+		schema := Node{Description: shape.Doc}
 		for _, variant := range shape.Variants {
 			// A union names the chosen variant as the single member of an
 			// object, so an alternative projects as that object rather than as
 			// the variant's own shape. The projection has to agree with the
 			// codec; a document describing the unwrapped shape would describe
 			// something this module never writes.
-			described.OneOf = append(described.OneOf, Node{
+			schema.OneOf = append(schema.OneOf, Node{
 				Type:        "object",
 				Description: variant.Doc,
 				Required:    []string{variant.Name},
@@ -151,36 +151,36 @@ func (projection *projector) union(shape structure.Union) Node {
 				}},
 			})
 		}
-		return described
+		return schema
 	}
 
 	if shape.Name == "" {
 		return describe()
 	}
-	if projection.visiting[shape.Name] {
+	if projection.ancestors[shape.Name] {
 		return Node{Ref: projection.pointer(shape.Name)}
 	}
 	if _, described := projection.components[shape.Name]; described {
 		return Node{Ref: projection.pointer(shape.Name)}
 	}
 
-	projection.visiting[shape.Name] = true
-	described := describe()
-	delete(projection.visiting, shape.Name)
-	projection.components[shape.Name] = described
+	projection.ancestors[shape.Name] = true
+	schema := describe()
+	delete(projection.ancestors, shape.Name)
+	projection.components[shape.Name] = schema
 	return Node{Ref: projection.pointer(shape.Name)}
 }
 
-// projectTaggedUnion describes a union whose variants are told apart by a field.
+// taggedUnion describes a union whose variants are told apart by a field.
 //
 // Each alternative is the variant's own shape and the field that names it,
 // which is what allOf is for: the variant may be a component, and a reference
 // has nothing to add a property to. The const in each is what validates; the
 // discriminator beside them is an annotation for a reader that understands one.
-func (projection *projector) projectTaggedUnion(shape structure.Union) Node {
-	described := Node{Description: shape.Doc, Discriminator: shape.Discriminator}
+func (projection *projector) taggedUnion(shape structure.Union) Node {
+	schema := Node{Description: shape.Doc, Discriminator: shape.Discriminator}
 	for _, variant := range shape.Variants {
-		naming := Node{
+		tag := Node{
 			Type:     "object",
 			Required: []string{shape.Discriminator},
 			Properties: []Property{{
@@ -188,15 +188,15 @@ func (projection *projector) projectTaggedUnion(shape structure.Union) Node {
 				Schema: Node{Type: "string", Const: variant.Name},
 			}},
 		}
-		described.OneOf = append(described.OneOf, Node{
+		schema.OneOf = append(schema.OneOf, Node{
 			Description: variant.Doc,
-			AllOf:       []Node{projection.node(variant.Node), naming},
+			AllOf:       []Node{projection.node(variant.Node), tag},
 		})
 	}
-	return described
+	return schema
 }
 
-func (projection *projector) reference0(shape structure.Reference) Node {
+func (projection *projector) referenceNode(shape structure.Reference) Node {
 	if shape.Name != "" {
 		return Node{Ref: projection.pointer(shape.Name)}
 	}

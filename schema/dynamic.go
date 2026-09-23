@@ -32,15 +32,15 @@ import (
 // no more, because there was nothing to record. That is the honest limit of
 // describing a shape rather than writing one.
 func Dynamic(node structure.Node) Schema[dynamic.Value] {
-	built := dynamicCodec(node)
-	if fault := Validate(built); fault != nil {
-		return faultedSchema[dynamic.Value](node, fault)
+	codec := dynamicCodec(node)
+	if fault := Validate(codec); fault != nil {
+		return faultySchema[dynamic.Value](node, fault)
 	}
 	// The description is kept exactly as it was given. Rebuilding it produced a
 	// codec, not a new description, and a projection has to see what the author
 	// wrote -- the recorded width included, which the rebuilt wire shape does
 	// not carry.
-	return of(node, built.encode, built.decode)
+	return of(node, codec.encode, codec.decode)
 }
 
 func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
@@ -52,7 +52,7 @@ func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
 	case structure.Sequence:
 		return dynamicSequence(shape)
 	case structure.Mapping:
-		return dynamicMapSchema(shape)
+		return dynamicMapping(shape)
 	case structure.Union:
 		return dynamicUnion(shape)
 	case structure.Nullable:
@@ -60,40 +60,40 @@ func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
 	case structure.Reference:
 		return dynamicReference(shape)
 	default:
-		return faultedSchema[dynamic.Value](node, fail("a description is required", nil))
+		return faultySchema[dynamic.Value](node, fail("a description is required", nil))
 	}
 }
 
-// DescribedField declares a field of a description: a name and a shape, and no
+// DynamicField declares a field of a description: a name and a shape, and no
 // accessors.
 //
 // The accessors are the only part of a field declaration that needs a Go type,
 // so leaving them out is exactly the difference between describing a shape and
 // binding one. Everything else is the same Field, so the same modifiers apply:
-// Optional and Documented.
+// Optional and WithDescription.
 //
 // It is named for what it returns, as FieldOf is. A third word for a field --
 // a member, an entry -- would be one more thing to learn about something the
 // reader already knows.
-func DescribedField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
-	described := Dynamic(shape.Structure())
+func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
+	codec := Dynamic(shape.Structure())
 	if fault := Validate(shape); fault != nil {
 		return Field[dynamic.Value]{name: name, node: shape.Structure(), fault: fault}
 	}
 	return Field[dynamic.Value]{
 		name:      name,
 		node:      shape.Structure(),
-		fault:     Validate(described),
-		derivable: func(value dynamic.Value) bool { return heldBy(value, name) },
+		fault:     Validate(codec),
+		derivable: func(value dynamic.Value) bool { return hasMember(value, name) },
 		encode: func(value dynamic.Value, into Sink) error {
-			memberOfed, present := memberOf(value, name)
+			member, present := memberOf(value, name)
 			if !present {
 				return fail("required member is missing", nil)
 			}
-			return Encode(described, memberOfed, into)
+			return Encode(codec, member, into)
 		},
 		decode: func(target *dynamic.Value, from Source) error {
-			decoded, err := Decode(described, from)
+			decoded, err := Decode(codec, from)
 			if err != nil {
 				return err
 			}
@@ -103,7 +103,7 @@ func DescribedField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 	}
 }
 
-// DescribedVariant declares a variant of a described union: a name and a
+// DynamicVariant declares a variant of a described union: a name and a
 // shape, and no narrowing.
 //
 // A described value carries its own tag -- the chosen variant is the object's
@@ -112,28 +112,28 @@ func DescribedField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 //
 // It is a variant and not an alternative or a choice, because the type it
 // returns is Variant and OneOf takes Variants. The word was already chosen.
-func DescribedVariant[B any](name string, shape Schema[B]) Variant[dynamic.Value] {
-	described := Dynamic(shape.Structure())
+func DynamicVariant[B any](name string, shape Schema[B]) Variant[dynamic.Value] {
+	codec := Dynamic(shape.Structure())
 	if fault := Validate(shape); fault != nil {
 		return Variant[dynamic.Value]{name: name, node: shape.Structure(), fault: fault}
 	}
 	return Variant[dynamic.Value]{
 		name:  name,
 		node:  shape.Structure(),
-		fault: Validate(described),
+		fault: Validate(codec),
 		matches: func(value dynamic.Value) bool {
-			chosen, only := chosenBy(value)
-			return only && chosen.Name == name
+			variant, only := variantOf(value)
+			return only && variant.Name == name
 		},
 		encode: func(value dynamic.Value, into Sink) error {
-			chosen, only := chosenBy(value)
-			if !only || chosen.Name != name {
+			variant, only := variantOf(value)
+			if !only || variant.Name != name {
 				return fail("the value is not the "+name+" variant", nil)
 			}
-			return Encode(described, chosen.Value, into)
+			return Encode(codec, variant.Value, into)
 		},
 		decode: func(from Source) (dynamic.Value, error) {
-			decoded, err := Decode(described, from)
+			decoded, err := Decode(codec, from)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +152,7 @@ func memberOf(value dynamic.Value, name string) (dynamic.Value, bool) {
 	return object.Member(name)
 }
 
-func heldBy(value dynamic.Value, name string) bool {
+func hasMember(value dynamic.Value, name string) bool {
 	_, present := memberOf(value, name)
 	return present
 }
@@ -168,7 +168,7 @@ func withMember(target dynamic.Value, name string, value dynamic.Value) dynamic.
 	return object
 }
 
-func chosenBy(value dynamic.Value) (dynamic.Field, bool) {
+func variantOf(value dynamic.Value) (dynamic.Field, bool) {
 	object, isObject := value.(dynamic.Object)
 	if !isObject {
 		return dynamic.Field{}, false

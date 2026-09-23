@@ -34,7 +34,7 @@ func OneOfBy[A any](name string, discriminator string, variants ...Variant[A]) S
 		Variants:      describeVariants(variants),
 	}
 	if fault := firstTaggedFault(discriminator, variants); fault != nil {
-		return faultedSchema[A](node, fault)
+		return faultySchema[A](node, fault)
 	}
 
 	byName := make(map[string]Variant[A], len(variants))
@@ -89,8 +89,8 @@ func encodeTagged[A any](
 		}
 		// Every variant is an object -- the declaration check above refuses
 		// anything else -- so the name always has somewhere to go.
-		tagging := &taggingSink{Sink: into, name: discriminator, value: variant.name}
-		if err := variant.encode(value, tagging); err != nil {
+		sink := &tagSink{Sink: into, name: discriminator, value: variant.name}
+		if err := variant.encode(value, sink); err != nil {
 			return within(variant.name, err)
 		}
 		return nil
@@ -98,16 +98,16 @@ func encodeTagged[A any](
 	return fail("no variant matches the value", nil)
 }
 
-// taggingSink writes the name into the object the variant writes, which is what
+// tagSink writes the name into the object the variant writes, which is what
 // puts the two in one object without the variant knowing about the union.
-type taggingSink struct {
+type tagSink struct {
 	Sink
 	name  string
 	value string
 	depth int
 }
 
-func (sink *taggingSink) BeginObject() error {
+func (sink *tagSink) BeginObject() error {
 	if err := sink.Sink.BeginObject(); err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (sink *taggingSink) BeginObject() error {
 	return sink.Sink.Text(sink.value)
 }
 
-func (sink *taggingSink) EndObject() error {
+func (sink *tagSink) EndObject() error {
 	sink.depth--
 	return sink.Sink.EndObject()
 }
@@ -134,41 +134,41 @@ func decodeTagged[A any](
 	byName map[string]Variant[A],
 ) (A, error) {
 	var missing A
-	buffering, can := from.(Buffering)
+	bufferer, can := from.(Bufferer)
 	if !can {
 		return missing, fail(
 			"this format cannot read a union told apart by a field, because the "+
 				"name may arrive after the fields it settles", nil)
 	}
-	buffered, err := buffering.Buffer()
+	document, err := bufferer.Buffer()
 	if err != nil {
 		return missing, err
 	}
 
-	object, isObject := buffered.(dynamic.Object)
+	object, isObject := document.(dynamic.Object)
 	if !isObject {
 		return missing, fail("is not an object", nil)
 	}
-	chosen, err := namedBy(object, discriminator)
+	tag, err := tagOf(object, discriminator)
 	if err != nil {
 		return missing, err
 	}
-	variant, known := byName[chosen]
+	variant, known := byName[tag]
 	if !known {
-		return missing, fail("no variant is named "+chosen, nil)
+		return missing, fail("no variant is named "+tag, nil)
 	}
 	// The name is the union's, not the variant's, so the variant reads the
 	// object it would have written: its own fields and nothing else.
-	read, err := variant.decode(&dynamicSource{
-		pending: []dynamic.Value{without(object, discriminator)},
+	value, err := variant.decode(&dynamicSource{
+		pending: []dynamic.Value{omit(object, discriminator)},
 	})
 	if err != nil {
-		return missing, within(chosen, err)
+		return missing, within(tag, err)
 	}
-	return read, nil
+	return value, nil
 }
 
-func namedBy(object dynamic.Object, discriminator string) (string, error) {
+func tagOf(object dynamic.Object, discriminator string) (string, error) {
 	member, present := object.Member(discriminator)
 	if !present {
 		return "", fail("carries no "+discriminator+" to say which variant it is", nil)
@@ -180,12 +180,12 @@ func namedBy(object dynamic.Object, discriminator string) (string, error) {
 	return text.Value, nil
 }
 
-func without(object dynamic.Object, name string) dynamic.Value {
-	makeed := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
+func omit(object dynamic.Object, name string) dynamic.Value {
+	rest := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
 	for _, field := range object.Fields {
 		if field.Name != name {
-			makeed.Fields = append(makeed.Fields, field)
+			rest.Fields = append(rest.Fields, field)
 		}
 	}
-	return makeed
+	return rest
 }

@@ -22,17 +22,17 @@ func goTypeOf(node structure.Node) (string, error) {
 	case structure.Scalar:
 		return goScalar(shape), nil
 	case structure.Sequence:
-		return wrappedGoType("[]", shape.Element)
+		return wrapGoType("[]", shape.Element)
 	case structure.Mapping:
-		return wrappedGoType("map[string]", shape.Value)
+		return wrapGoType("map[string]", shape.Value)
 	case structure.Nullable:
-		return wrappedGoType("*", shape.Inner)
+		return wrapGoType("*", shape.Inner)
 	case structure.Object:
-		return namedGoType(shape.Name, "an object")
+		return goTypeName(shape.Name, "an object")
 	case structure.Union:
-		return namedGoType(shape.Name, "a union")
+		return goTypeName(shape.Name, "a union")
 	case structure.Reference:
-		return namedGoType(shape.Name, "a reference")
+		return goTypeName(shape.Name, "a reference")
 	default:
 		return "", errors.New("this shape has no Go type")
 	}
@@ -43,8 +43,8 @@ func goTypeOf(node structure.Node) (string, error) {
 // width down says so, and one that did not gets the widest thing the wire can
 // carry.
 func goScalar(shape structure.Scalar) string {
-	if string := shape.Precision.String(); string != "" {
-		return string
+	if name := shape.Precision.String(); name != "" {
+		return name
 	}
 	switch shape.Kind {
 	case structure.Integer:
@@ -62,17 +62,17 @@ func goScalar(shape structure.Scalar) string {
 	}
 }
 
-func wrappedGoType(prefix string, inner structure.Node) (string, error) {
-	within, err := goTypeOf(inner)
+func wrapGoType(prefix string, inner structure.Node) (string, error) {
+	goType, err := goTypeOf(inner)
 	if err != nil {
 		return "", err
 	}
-	return prefix + within, nil
+	return prefix + goType, nil
 }
 
-// namedGoType refuses an anonymous shape. A name is what a Go type is, and a
+// goTypeName refuses an anonymous shape. A name is what a Go type is, and a
 // generator that invented one would be naming something the author did not.
-func namedGoType(name string, what string) (string, error) {
+func goTypeName(name string, what string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("%s has no name, and a Go type is a name", what)
 	}

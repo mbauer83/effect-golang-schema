@@ -58,15 +58,15 @@ func VariantOf[A, B any](
 	}
 }
 
-// Documented attaches prose a projection can carry into its output.
-func (variant Variant[A]) Documented(doc string) Variant[A] {
+// WithDescription attaches prose a projection can carry into its output.
+func (variant Variant[A]) WithDescription(doc string) Variant[A] {
 	variant.doc = doc
 	return variant
 }
 
-// Numbered gives the variant a number, for the same reason a field has one: a
+// WithNumber gives the variant a number, for the same reason a field has one: a
 // union becomes a oneof, and each of its members is numbered.
-func (variant Variant[A]) Numbered(number int) Variant[A] {
+func (variant Variant[A]) WithNumber(number int) Variant[A] {
 	if number < 1 {
 		variant.fault = fail("a variant number is at least 1", nil)
 		return variant
@@ -94,7 +94,7 @@ func (variant Variant[A]) Numbered(number int) Variant[A] {
 func OneOf[A any](name string, variants ...Variant[A]) Schema[A] {
 	node := structure.Union{Name: name, Variants: describeVariants(variants)}
 	if fault := firstVariantFault(variants); fault != nil {
-		return faultedSchema[A](node, fault)
+		return faultySchema[A](node, fault)
 	}
 
 	byName := make(map[string]Variant[A], len(variants))
@@ -113,16 +113,16 @@ func OneOf[A any](name string, variants ...Variant[A]) Schema[A] {
 }
 
 func describeVariants[A any](variants []Variant[A]) []structure.Variant {
-	described := make([]structure.Variant, 0, len(variants))
+	descriptions := make([]structure.Variant, 0, len(variants))
 	for _, variant := range variants {
-		described = append(described, structure.Variant{
+		descriptions = append(descriptions, structure.Variant{
 			Name:   variant.name,
 			Doc:    variant.doc,
 			Node:   variant.node,
 			Number: variant.number,
 		})
 	}
-	return described
+	return descriptions
 }
 
 // firstVariantFault reports a union that could never encode or decode a value:
@@ -167,12 +167,12 @@ func encodeVariant[A any](value A, variants []Variant[A], into Sink) error {
 }
 
 func decodeVariant[A any](from Source, byName map[string]Variant[A]) (A, error) {
-	var built A
-	selected := ""
+	var result A
+	tag := ""
 
 	err := from.ReadObject(func(name string) error {
-		if selected != "" {
-			return fail("a union names one variant, and both "+selected+" and "+name+" are present", nil)
+		if tag != "" {
+			return fail("a union names one variant, and both "+tag+" and "+name+" are present", nil)
 		}
 		variant, known := byName[name]
 		if !known {
@@ -180,21 +180,21 @@ func decodeVariant[A any](from Source, byName map[string]Variant[A]) (A, error) 
 			// unknown field: there is no value to build without it.
 			return fail("no variant is named "+name, nil)
 		}
-		selected = name
+		tag = name
 		decoded, err := variant.decode(from)
 		if err != nil {
 			return within(name, err)
 		}
-		built = decoded
+		result = decoded
 		return nil
 	})
 	if err != nil {
 		var missing A
 		return missing, err
 	}
-	if selected == "" {
+	if tag == "" {
 		var missing A
 		return missing, fail("a union names one variant, and none is present", nil)
 	}
-	return built, nil
+	return result, nil
 }

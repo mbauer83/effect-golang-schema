@@ -15,13 +15,13 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// scalar writes one scalar value under its field number.
+// writeScalar writes one writeScalar value under its field number.
 //
 // present says the field has explicit presence, which decides what happens to a
 // zero. proto3 omits the zero of an implicit-presence field -- that is what
 // makes a default cost no bytes -- and writes it for one with presence, because
 // there the difference between zero and absent is the point.
-func scalar(
+func writeScalar(
 	into *writer,
 	number int,
 	shape structure.Scalar,
@@ -48,19 +48,19 @@ func scalar(
 		}
 		into.block(number, bytes.Value)
 	case structure.Boolean:
-		heldValue, ok := value.(dynamic.Boolean)
+		flag, ok := value.(dynamic.Boolean)
 		if !ok {
 			return kindMismatchError("a bool", value)
 		}
-		if !heldValue.Value && !present {
+		if !flag.Value && !present {
 			return nil
 		}
-		into.tag(number, varying)
-		into.varint(boolean(heldValue.Value))
+		into.tag(number, wireVarint)
+		into.varint(boolean(flag.Value))
 	case structure.Integer:
-		return whole(into, number, shape, value, present)
+		return writeInteger(into, number, shape, value, present)
 	case structure.Number:
-		return fractional(into, number, shape, value, present)
+		return writeFractional(into, number, shape, value, present)
 	case structure.Timestamp:
 		timestamp, ok := value.(dynamic.Timestamp)
 		if !ok {
@@ -76,7 +76,7 @@ func scalar(
 	return nil
 }
 
-func whole(
+func writeInteger(
 	into *writer,
 	number int,
 	shape structure.Scalar,
@@ -90,7 +90,7 @@ func whole(
 	if integer.Value == 0 && !present {
 		return nil
 	}
-	into.tag(number, varying)
+	into.tag(number, wireVarint)
 	into.varint(varintOf(integer.Value))
 	return nil
 }
@@ -106,39 +106,39 @@ func varintOf(value int64) uint64 {
 	return uint64(value)
 }
 
-func fractional(
+func writeFractional(
 	into *writer,
 	number int,
 	shape structure.Scalar,
 	value dynamic.Value,
 	present bool,
 ) error {
-	heldValue, ok := value.(dynamic.Number)
+	fraction, ok := value.(dynamic.Number)
 	if !ok {
 		return kindMismatchError("a number", value)
 	}
-	if heldValue.Value == 0 && !present {
+	if fraction.Value == 0 && !present {
 		return nil
 	}
 	if shape.Precision == structure.Float32Bits {
-		into.tag(number, fourBytes)
-		into.float(float32(heldValue.Value))
+		into.tag(number, wireI32)
+		into.float(float32(fraction.Value))
 		return nil
 	}
-	into.tag(number, eightBytes)
-	into.double(heldValue.Value)
+	into.tag(number, wireI64)
+	into.double(fraction.Value)
 	return nil
 }
 
-// packedOne writes one element of a packed field: its value, with no tag.
-func packedOne(into *writer, shape structure.Scalar, value dynamic.Value) error {
+// writePackedElement writes one element of a packed field: its value, with no tag.
+func writePackedElement(into *writer, shape structure.Scalar, value dynamic.Value) error {
 	switch shape.Kind {
 	case structure.Boolean:
-		heldValue, ok := value.(dynamic.Boolean)
+		flag, ok := value.(dynamic.Boolean)
 		if !ok {
 			return kindMismatchError("a bool", value)
 		}
-		into.varint(boolean(heldValue.Value))
+		into.varint(boolean(flag.Value))
 	case structure.Integer:
 		integer, ok := value.(dynamic.Integer)
 		if !ok {
@@ -166,11 +166,11 @@ func packedOne(into *writer, shape structure.Scalar, value dynamic.Value) error 
 func instant(moment time.Time) []byte {
 	into := &writer{}
 	if seconds := moment.Unix(); seconds != 0 {
-		into.tag(1, varying)
+		into.tag(1, wireVarint)
 		into.varint(uint64(seconds))
 	}
 	if nanos := moment.Nanosecond(); nanos != 0 {
-		into.tag(2, varying)
+		into.tag(2, wireVarint)
 		into.varint(uint64(nanos))
 	}
 	return into.bytes
@@ -183,6 +183,6 @@ func boolean(value bool) uint64 {
 	return 0
 }
 
-func kindMismatchError(wanted string, value dynamic.Value) error {
-	return fmt.Errorf("the description says %s and the value is a %T", wanted, value)
+func kindMismatchError(expectation string, value dynamic.Value) error {
+	return fmt.Errorf("the description says %s and the value is a %T", expectation, value)
 }

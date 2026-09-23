@@ -74,7 +74,7 @@ func Uint64() Schema[uint64] {
 // Decoding rejects a value the width cannot hold, rather than quietly turning
 // it into an infinity.
 func Float32() Schema[float32] {
-	return constrainedFloat(
+	return narrowFloat(
 		TransformOrFail(Float64(),
 			func(value float64) (float32, error) {
 				if value < -math.MaxFloat32 || value > math.MaxFloat32 {
@@ -95,7 +95,7 @@ type whole interface {
 // narrowInteger builds a schema for a Go integer narrower than the wire's, refusing
 // a value the type cannot hold and recording the range it implies.
 func narrowInteger[A whole](precision structure.Precision, lowest int64, highest int64) Schema[A] {
-	converted := TransformOrFail(Int64(),
+	inner := TransformOrFail(Int64(),
 		func(value int64) (A, error) {
 			if value < lowest || value > highest {
 				return 0, fail("integer does not fit in a "+precision.String(), nil)
@@ -105,19 +105,19 @@ func narrowInteger[A whole](precision structure.Precision, lowest int64, highest
 		func(value A) (int64, error) { return int64(value), nil },
 	)
 	return withPrecision(
-		converted.Constrained(AtLeast(A(lowest)), AtMost(A(highest))),
+		inner.Check(AtLeast(A(lowest)), AtMost(A(highest))),
 		precision)
 }
 
-// constrainedFloat records a float's width and the range it implies.
-func constrainedFloat(
-	converted Schema[float32],
+// narrowFloat records a float's width and the range it implies.
+func narrowFloat(
+	inner Schema[float32],
 	precision structure.Precision,
 	lowest float32,
 	highest float32,
 ) Schema[float32] {
 	return withPrecision(
-		converted.Constrained(AtLeast(lowest), AtMost(highest)), precision)
+		inner.Check(AtLeast(lowest), AtMost(highest)), precision)
 }
 
 // withPrecision records the Go representation in the description. The wire
@@ -126,12 +126,12 @@ func constrainedFloat(
 func withPrecision[A any](shape Schema[A], precision structure.Precision) Schema[A] {
 	scalar, isScalar := shape.node.(structure.Scalar)
 	if !isScalar {
-		return faultedSchema[A](shape.node, fail("a precision applies to a scalar", nil))
+		return faultySchema[A](shape.node, fail("a precision applies to a scalar", nil))
 	}
 	// The wire kind is derived from the width, so the two cannot be set to
 	// disagree: a width on text is a description contradicting itself.
 	if kind, numeric := precision.Numeric(); !numeric || kind != scalar.Kind {
-		return faultedSchema[A](shape.node,
+		return faultySchema[A](shape.node,
 			fail("a width of "+precision.String()+" does not describe "+scalar.Kind.String(), nil))
 	}
 	scalar.Precision = precision

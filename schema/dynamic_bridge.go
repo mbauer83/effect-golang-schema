@@ -16,11 +16,11 @@ import (
 // ToDynamic reads a typed value out as the universal representation, which is
 // how a typed schema hands a value to something that only knows the shape.
 func ToDynamic[A any](shape Schema[A], value A) (dynamic.Value, error) {
-	built := &dynamicSink{}
-	if err := Encode(shape, value, built); err != nil {
+	sink := &dynamicSink{}
+	if err := Encode(shape, value, sink); err != nil {
 		return nil, err
 	}
-	return built.root, nil
+	return sink.root, nil
 }
 
 // FromDynamic builds a typed value from the universal representation, which is

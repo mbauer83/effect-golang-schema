@@ -39,51 +39,51 @@ type structField struct {
 // renderType writes one schema. A struct with no fields is allowed: an empty
 // variant of a union is a real shape, and refusing it would make one
 // unexpressible.
-func renderType(written *bytes.Buffer, described structType, origin string) error {
-	fmt.Fprintf(written, "\n// %sSchema describes %s. It is generated from %s.\n",
-		described.name, described.name, origin)
-	fmt.Fprintf(written, "var %sSchema = ", described.name)
-	fmt.Fprintf(written, "schema.Struct[%s](%s,\n", described.name, strconv.Quote(described.name))
-	for _, field := range described.fields {
-		renderField(written, described.name, field)
+func renderType(out *bytes.Buffer, binding structType, origin string) error {
+	fmt.Fprintf(out, "\n// %sSchema describes %s. It is generated from %s.\n",
+		binding.name, binding.name, origin)
+	fmt.Fprintf(out, "var %sSchema = ", binding.name)
+	fmt.Fprintf(out, "schema.Struct[%s](%s,\n", binding.name, strconv.Quote(binding.name))
+	for _, field := range binding.fields {
+		renderField(out, binding.name, field)
 	}
-	fmt.Fprintf(written, ")")
-	if described.doc != "" {
-		fmt.Fprintf(written, ".Documented(%s)", strconv.Quote(described.doc))
+	fmt.Fprintf(out, ")")
+	if binding.doc != "" {
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(binding.doc))
 	}
-	fmt.Fprintf(written, "\n")
+	fmt.Fprintf(out, "\n")
 	return nil
 }
 
-func renderField(written *bytes.Buffer, owner string, field structField) {
+func renderField(out *bytes.Buffer, owner string, field structField) {
 	if field.optional {
-		renderOptional(written, owner, field)
+		renderOptional(out, owner, field)
 	} else {
-		renderRequired(written, owner, field)
+		renderRequired(out, owner, field)
 	}
 	if field.doc != "" {
-		fmt.Fprintf(written, ".Documented(%s)", strconv.Quote(field.doc))
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(field.doc))
 	}
-	fmt.Fprintf(written, ",\n")
+	fmt.Fprintf(out, ",\n")
 }
 
-func renderRequired(written *bytes.Buffer, owner string, field structField) {
-	fmt.Fprintf(written, "schema.FieldOf(%s, %s,\n", strconv.Quote(field.wire), field.shape)
-	fmt.Fprintf(written, "func(value %s) %s { return value.%s },\n",
+func renderRequired(out *bytes.Buffer, owner string, field structField) {
+	fmt.Fprintf(out, "schema.FieldOf(%s, %s,\n", strconv.Quote(field.wire), field.shape)
+	fmt.Fprintf(out, "func(value %s) %s { return value.%s },\n",
 		owner, field.goType, field.name)
-	fmt.Fprintf(written, "func(value *%s, field %s) { value.%s = field })",
+	fmt.Fprintf(out, "func(value *%s, field %s) { value.%s = field })",
 		owner, field.goType, field.name)
 }
 
 // renderOptional reads presence from the pointer, which is the only honest
 // answer: a zero value is not absence, and the schema deliberately refuses to
 // guess that it is.
-func renderOptional(written *bytes.Buffer, owner string, field structField) {
-	fmt.Fprintf(written, "schema.OptionalFieldOf(%s, %s,\n", strconv.Quote(field.wire), field.shape)
-	fmt.Fprintf(written, "func(value %s) (%s, bool) {\n", owner, field.element)
-	fmt.Fprintf(written, "var absent %s\n", field.element)
-	fmt.Fprintf(written, "if value.%s == nil { return absent, false }\n", field.name)
-	fmt.Fprintf(written, "return *value.%s, true\n},\n", field.name)
-	fmt.Fprintf(written, "func(value *%s, field %s) { value.%s = &field })",
+func renderOptional(out *bytes.Buffer, owner string, field structField) {
+	fmt.Fprintf(out, "schema.OptionalFieldOf(%s, %s,\n", strconv.Quote(field.wire), field.shape)
+	fmt.Fprintf(out, "func(value %s) (%s, bool) {\n", owner, field.element)
+	fmt.Fprintf(out, "var absent %s\n", field.element)
+	fmt.Fprintf(out, "if value.%s == nil { return absent, false }\n", field.name)
+	fmt.Fprintf(out, "return *value.%s, true\n},\n", field.name)
+	fmt.Fprintf(out, "func(value *%s, field %s) { value.%s = &field })",
 		owner, field.element, field.name)
 }

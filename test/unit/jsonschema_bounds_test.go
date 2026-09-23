@@ -22,13 +22,13 @@ func TestConstraintsBecomeTheKeywordsThatSayTheSameThing(t *testing.T) {
 		Tags  []string
 	}
 	bounded := schema.Struct[constrained]("Reading",
-		schema.FieldOf("code", schema.Text().Constrained(schema.MaxLength(7), schema.Matching(`^[A-Z]{2}-[0-9]{4}$`)),
+		schema.FieldOf("code", schema.Text().Check(schema.MaxLength(7), schema.Pattern(`^[A-Z]{2}-[0-9]{4}$`)),
 			func(value constrained) string { return value.Code },
 			func(value *constrained, code string) { value.Code = code }),
-		schema.FieldOf("pages", schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](100)),
+		schema.FieldOf("pages", schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](100)),
 			func(value constrained) int { return value.Pages },
 			func(value *constrained, pages int) { value.Pages = pages }),
-		schema.FieldOf("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1)),
+		schema.FieldOf("tags", schema.List(schema.Text()).Check(schema.MinItems[string](1)),
 			func(value constrained) []string { return value.Tags },
 			func(value *constrained, tags []string) { value.Tags = tags }),
 	)
@@ -46,7 +46,7 @@ func TestConstraintsBecomeTheKeywordsThatSayTheSameThing(t *testing.T) {
 		}
 	}
 
-	emitted := compiled(t, bounded.Structure())
+	emitted := compile(t, bounded.Structure())
 	admitted := `{"code":"AB-1234","pages":50,"tags":["one"]}`
 	if err := emitted.Validate(instance(t, admitted)); err != nil {
 		t.Errorf("the projection refuses what the codec admits: %v", err)
@@ -93,7 +93,7 @@ func TestAFormatReachesTheDocumentAsAnnotationAndAsRule(t *testing.T) {
 		t.Errorf("expected the rule expressed as well:\n%s", rendered)
 	}
 
-	emitted := compiled(t, shape.Structure())
+	emitted := compile(t, shape.Structure())
 	admitted := `{"id":"123e4567-e89b-12d3-a456-426614174000"}`
 	refused := `{"id":"not-a-uuid"}`
 	if err := emitted.Validate(instance(t, admitted)); err != nil {
@@ -126,7 +126,7 @@ func TestATaggedUnionProjectsAsTheWireFormItWrites(t *testing.T) {
 }
 
 func TestTheEmittedTaggedUnionAgreesWithTheCodec(t *testing.T) {
-	emitted := compiled(t, toleranceSchema.Structure())
+	emitted := compile(t, toleranceSchema.Structure())
 
 	admitted := map[string]string{
 		"a variant and its field": `{"type":"iso2768","grade":"medium"}`,

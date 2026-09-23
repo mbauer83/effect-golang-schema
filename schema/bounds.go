@@ -94,10 +94,10 @@ func MaxLength(atMost int) Constraint[string] {
 		})
 }
 
-// Matching admits strings the expression matches. The syntax is Go's, which is
+// Pattern admits strings the expression matches. The syntax is Go's, which is
 // RE2; a pattern that does not compile is a declaration mistake and is
 // reported by Validate rather than panicking at the first request.
-func Matching(expression string) Constraint[string] {
+func Pattern(expression string) Constraint[string] {
 	compiled, err := regexp.Compile(expression)
 	if err != nil {
 		return Constraint[string]{fault: fail("the pattern does not compile", err)}

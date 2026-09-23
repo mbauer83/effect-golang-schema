@@ -25,11 +25,11 @@ renaming a Go field is safe and renumbering it is not, which is the opposite of
 every other projection here. So a number is declared, not derived:
 
 ```go
-schema.FieldOf("reference", schema.UUID(), get, set).Numbered(1)
-schema.DescribedVariant("byRail", railSchema).Numbered(2)
+schema.FieldOf("reference", schema.UUID(), get, set).WithNumber(1)
+schema.DynamicVariant("byRail", railSchema).WithNumber(2)
 ```
 
-`Numbered` is a modifier rather than a parameter of `FieldOf`, because most
+`WithNumber` is a modifier rather than a parameter of `FieldOf`, because most
 schemas never meet such a wire and a number every declaration had to carry
 would be noise in all of them. Where one is needed it is **required**: a number
 taken from declaration order would change when the declaration was reordered,

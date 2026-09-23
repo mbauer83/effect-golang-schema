@@ -90,13 +90,13 @@ func (source *dynamicSource) Number() (float64, error) {
 }
 
 func (source *dynamicSource) Boolean() (bool, error) {
-	takenEntry, err := taken[dynamic.Boolean](source, "a boolean")
-	return takenEntry.Value, err
+	value, err := takeAs[dynamic.Boolean](source, "a boolean")
+	return value.Value, err
 }
 
 func (source *dynamicSource) Bytes() ([]byte, error) {
-	takenEntry, err := taken[dynamic.Bytes](source, "a byte string")
-	return takenEntry.Value, err
+	value, err := takeAs[dynamic.Bytes](source, "a byte string")
+	return value.Value, err
 }
 
 func (source *dynamicSource) Timestamp() (time.Time, error) {
@@ -125,7 +125,7 @@ func (source *dynamicSource) Null() (bool, error) {
 }
 
 func (source *dynamicSource) ReadObject(decode func(name string) error) error {
-	object, err := taken[dynamic.Object](source, "an object")
+	object, err := takeAs[dynamic.Object](source, "an object")
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (source *dynamicSource) ReadObject(decode func(name string) error) error {
 }
 
 func (source *dynamicSource) ReadList(decode func() error) error {
-	list, err := taken[dynamic.List](source, "a list")
+	list, err := takeAs[dynamic.List](source, "a list")
 	if err != nil {
 		return err
 	}
@@ -163,8 +163,8 @@ func (source *dynamicSource) Buffer() (dynamic.Value, error) {
 	return source.take()
 }
 
-// taken reads the next value and checks it is the case the schema asked for.
-func taken[A dynamic.Value](source *dynamicSource, wanted string) (A, error) {
+// takeAs reads the next value and checks it is the case the schema asked for.
+func takeAs[A dynamic.Value](source *dynamicSource, kind string) (A, error) {
 	var missing A
 	value, err := source.take()
 	if err != nil {
@@ -172,7 +172,7 @@ func taken[A dynamic.Value](source *dynamicSource, wanted string) (A, error) {
 	}
 	a, is := value.(A)
 	if !is {
-		return missing, fail("expected "+wanted, nil)
+		return missing, fail("expected "+kind, nil)
 	}
 	return a, nil
 }

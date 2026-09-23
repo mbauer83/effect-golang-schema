@@ -18,7 +18,7 @@ import (
 func Struct[A any](name string, fields ...Field[A]) Schema[A] {
 	node := structure.Object{Name: name, Fields: describeFields(fields)}
 	if fault := firstFieldFault(fields); fault != nil {
-		return faultedSchema[A](node, fault)
+		return faultySchema[A](node, fault)
 	}
 
 	required, byName := indexFields(fields)

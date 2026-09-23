@@ -28,7 +28,7 @@ func (projection *projector) scalar(scalar structure.Scalar) (shape, error) {
 	case structure.Bytes:
 		return shape{name: "bytes", notes: notes}, nil
 	case structure.Timestamp:
-		projection.addImport(Timestamps)
+		projection.addImport(TimestampImport)
 		return shape{name: "google.protobuf.Timestamp", notes: notes}, nil
 	case structure.Number:
 		if scalar.Precision == structure.Float32Bits {
@@ -68,13 +68,13 @@ func constraintNotes(constraints []structure.Constraint) []string {
 	if len(constraints) == 0 {
 		return nil
 	}
-	said := make([]string, 0, len(constraints))
+	notes := make([]string, 0, len(constraints))
 	for _, constraint := range constraints {
-		if rendered := constraintText(constraint); rendered != "" {
-			said = append(said, rendered)
+		if note := constraintText(constraint); note != "" {
+			notes = append(notes, note)
 		}
 	}
-	return said
+	return notes
 }
 
 func constraintText(constraint structure.Constraint) string {
@@ -104,11 +104,11 @@ func constraintText(constraint structure.Constraint) string {
 
 // pluralise words a count, because "at least 1 characters" appears in a file
 // other people read.
-func pluralise(value int, thing string) string {
+func pluralise(value int, unit string) string {
 	if value == 1 {
-		return "1 " + thing
+		return "1 " + unit
 	}
-	return strconv.Itoa(value) + " " + thing + "s"
+	return strconv.Itoa(value) + " " + unit + "s"
 }
 
 func number(value float64) string {

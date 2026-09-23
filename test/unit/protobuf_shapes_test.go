@@ -26,10 +26,10 @@ type leg struct {
 var legSchema = schema.Struct[leg]("Leg",
 	schema.FieldOf("from", schema.Text(),
 		func(held leg) string { return held.From },
-		func(held *leg, value string) { held.From = value }).Numbered(1),
+		func(held *leg, value string) { held.From = value }).WithNumber(1),
 	schema.FieldOf("to", schema.Text(),
 		func(held leg) string { return held.To },
-		func(held *leg, value string) { held.To = value }).Numbered(2),
+		func(held *leg, value string) { held.To = value }).WithNumber(2),
 )
 
 // manifest carries one of everything else.
@@ -45,22 +45,22 @@ type manifest struct {
 var manifestSchema = schema.Struct[manifest]("Manifest",
 	schema.FieldOf("legs", schema.List(legSchema),
 		func(held manifest) []leg { return held.Legs },
-		func(held *manifest, value []leg) { held.Legs = value }).Numbered(1),
+		func(held *manifest, value []leg) { held.Legs = value }).WithNumber(1),
 	schema.FieldOf("weights", schema.List(schema.Float64()),
 		func(held manifest) []float64 { return held.Weights },
-		func(held *manifest, value []float64) { held.Weights = value }).Numbered(2),
+		func(held *manifest, value []float64) { held.Weights = value }).WithNumber(2),
 	schema.FieldOf("counts", schema.List(schema.Int32()),
 		func(held manifest) []int32 { return held.Counts },
-		func(held *manifest, value []int32) { held.Counts = value }).Numbered(3),
+		func(held *manifest, value []int32) { held.Counts = value }).WithNumber(3),
 	schema.FieldOf("tariffs", schema.Map(schema.Int64()),
 		func(held manifest) map[string]int64 { return held.Tariffs },
-		func(held *manifest, value map[string]int64) { held.Tariffs = value }).Numbered(4),
+		func(held *manifest, value map[string]int64) { held.Tariffs = value }).WithNumber(4),
 	schema.FieldOf("collected", schema.Time(),
 		func(held manifest) time.Time { return held.Collected },
-		func(held *manifest, value time.Time) { held.Collected = value }).Numbered(5),
+		func(held *manifest, value time.Time) { held.Collected = value }).WithNumber(5),
 	schema.FieldOf("offset", schema.Int64(),
 		func(held manifest) int64 { return held.Offset },
-		func(held *manifest, value int64) { held.Offset = value }).Numbered(6),
+		func(held *manifest, value int64) { held.Offset = value }).WithNumber(6),
 )
 
 // readByProtobuf compiles a description's projection and reads bytes with the
@@ -75,7 +75,7 @@ func readByProtobuf[A any](
 	if err != nil {
 		t.Fatal(err)
 	}
-	read := dynamicpb.NewMessage(protoCompiled(t, document))
+	read := dynamicpb.NewMessage(compileProto(t, document))
 	if err := proto.Unmarshal(message, read); err != nil {
 		t.Fatalf("protobuf could not read what this wrote: %v", err)
 	}

@@ -17,12 +17,12 @@ import (
 // shapeDescription is a union with no Go type, whose alternatives are
 // themselves descriptions.
 var shapeDescription = schema.OneOf[dynamic.Value]("Shape",
-	schema.DescribedVariant("circle", schema.Struct[dynamic.Value]("Circle",
-		schema.DescribedField("radius", schema.Float64().Constrained(schema.Above[float64](0))))).
-		Documented("a circle, by its radius"),
-	schema.DescribedVariant("rectangle", schema.Struct[dynamic.Value]("Rectangle",
-		schema.DescribedField("width", schema.Float64().Constrained(schema.Above[float64](0))),
-		schema.DescribedField("height", schema.Float64().Constrained(schema.Above[float64](0))))),
+	schema.DynamicVariant("circle", schema.Struct[dynamic.Value]("Circle",
+		schema.DynamicField("radius", schema.Float64().Check(schema.Above[float64](0))))).
+		WithDescription("a circle, by its radius"),
+	schema.DynamicVariant("rectangle", schema.Struct[dynamic.Value]("Rectangle",
+		schema.DynamicField("width", schema.Float64().Check(schema.Above[float64](0))),
+		schema.DynamicField("height", schema.Float64().Check(schema.Above[float64](0))))),
 )
 
 func TestADescribedUnionRoundTripsAndRefusesTheSameThings(t *testing.T) {
@@ -84,8 +84,8 @@ func TestADescribedNullableIsPresentAndNull(t *testing.T) {
 	// apart as a typed schema does: a nullable member is there carrying
 	// nothing, and an optional one is not there at all.
 	described := schema.Struct[dynamic.Value]("Reading",
-		schema.DescribedField("comment", schema.Nullable(schema.Text())),
-		schema.DescribedField("note", schema.Text()).Optional(),
+		schema.DynamicField("comment", schema.Nullable(schema.Text())),
+		schema.DynamicField("note", schema.Text()).Optional(),
 	)
 
 	value, err := schema.DecodeJSON(described, []byte(`{"comment":null}`))

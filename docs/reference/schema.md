@@ -45,18 +45,18 @@ accessors:
 
 ```go
 var Book = schema.Struct[dynamic.Value]("Book",
-    schema.DescribedField("title", schema.Text().Constrained(schema.MinLength(1))).
-        Documented("what the book is called"),
-    schema.DescribedField("pages",
-        schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))),
-    schema.DescribedField("subtitle", schema.Text()).Optional(),
-    schema.DescribedField("id", schema.UUID()),
+    schema.DynamicField("title", schema.Text().Check(schema.MinLength(1))).
+        WithDescription("what the book is called"),
+    schema.DynamicField("pages",
+        schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](20000))),
+    schema.DynamicField("subtitle", schema.Text()).Optional(),
+    schema.DynamicField("id", schema.UUID()),
 )
 ```
 
-`DescribedField` is `FieldOf` without the getter and setter — the only part of a
+`DynamicField` is `FieldOf` without the getter and setter — the only part of a
 field declaration that needs the Go type, so leaving them out is exactly the
-difference between *describing* a shape and *binding* one. `DescribedVariant` is
+difference between *describing* a shape and *binding* one. `DynamicVariant` is
 `VariantOf` without the narrowing, for the same reason: a described value
 carries its own tag, so narrowing to a variant is reading a name.
 `Dynamic(node)` is the general door: a typed schema's `Structure()` passed
@@ -107,7 +107,7 @@ typed path refuses.
 
 ### Naming a shape before it exists
 
-`Deferred` is the forward reference. It contributes a `structure.Reference` — a
+`Suspend` is the forward reference. It contributes a `structure.Reference` — a
 name and a way to reach what it names later — so a description may mention a
 shape that is not built yet, including itself and including another description
 whose turn has not come:
@@ -117,12 +117,12 @@ var folder, file schema.Schema[dynamic.Value]
 
 func init() {
     folder = schema.Struct[dynamic.Value]("Folder",
-        schema.DescribedField("files",
-            schema.List(schema.Deferred(func() schema.Schema[dynamic.Value] { return file }))),
+        schema.DynamicField("files",
+            schema.List(schema.Suspend(func() schema.Schema[dynamic.Value] { return file }))),
     )
     file = schema.Struct[dynamic.Value]("File",
-        schema.DescribedField("parent",
-            schema.Nullable(schema.Deferred(func() schema.Schema[dynamic.Value] { return folder }))),
+        schema.DynamicField("parent",
+            schema.Nullable(schema.Suspend(func() schema.Schema[dynamic.Value] { return folder }))),
     )
 }
 ```
@@ -146,11 +146,11 @@ Where the description is the source of truth, the Go types come from it:
 ```go
 // examples/inventory/definitions -- unexported, because they are input
 var item = schema.Struct[dynamic.Value]("Item",
-    schema.DescribedField("sku",
-        schema.Text().Constrained(schema.Matching(`^[A-Z]{3}-[0-9]{5}$`))),
-    schema.DescribedField("onHand", schema.Uint16()),
-    schema.DescribedField("note",
-        schema.Text().Constrained(schema.MaxLength(200))).Optional(),
+    schema.DynamicField("sku",
+        schema.Text().Check(schema.Pattern(`^[A-Z]{3}-[0-9]{5}$`))),
+    schema.DynamicField("onHand", schema.Uint16()),
+    schema.DynamicField("note",
+        schema.Text().Check(schema.MaxLength(200))).Optional(),
 )
 
 func Descriptions() []structure.Node { return []structure.Node{item.Structure()} }
@@ -173,7 +173,7 @@ type Item struct {
 
 var ItemSchema = schema.Struct[Item]("Item",
     schema.FieldOf("sku",
-        schema.Text().Constrained(schema.Matching("^[A-Z]{3}-[0-9]{5}$")), get, set),
+        schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")), get, set),
     ...
 )
 ```
@@ -219,7 +219,7 @@ changed without a regeneration fails there rather than at the next request.
 | Constructor | Describes |
 |---|---|
 | `Text` | a string |
-| `Formatted(name)` | a string annotated with a format, and nothing more |
+| `TextFormat(name)` | a string annotated with a format, and nothing more |
 | `UUID`, `Email`, `URI`, `URL`, `URIReference`, `Hostname`, `IPv4`, `IPv6` | a string in that standard format, **checked** |
 | `Int`, `Int8`, `Int16`, `Int32`, `Int64` | a whole number of that width |
 | `Uint`, `Uint8`, `Uint16`, `Uint32`, `Uint64` | an unsigned whole number of that width |
@@ -232,7 +232,7 @@ changed without a regeneration fails there rather than at the next request.
 | `Nullable(inner)` | present and null, as a pointer -- not the same as an absent field |
 | `Struct(name, fields...)` | a fixed set of named fields |
 | `OneOf(name, variants...)` | a choice between named alternatives |
-| `Deferred(resolve)` | a schema not built yet: itself, or another not yet written |
+| `Suspend(resolve)` | a schema not built yet: itself, or another not yet written |
 
 `FieldOf` declares a required field and `OptionalFieldOf` one that may be
 absent. An optional field's getter reports presence, because an empty string
@@ -243,10 +243,10 @@ Everything that *modifies* rather than builds is a method, so there is nothing
 to remember about which wrap and which are called on what they change:
 
 ```go
-schema.Struct[Book]("Book", …).Documented("one entry")
-schema.FieldOf("note", schema.Text(), get, set).Documented("a note")
-schema.VariantOf("circle", circleSchema, narrow, widen).Documented("a circle")
-schema.DescribedField("note", schema.Text()).Optional()
+schema.Struct[Book]("Book", …).WithDescription("one entry")
+schema.FieldOf("note", schema.Text(), get, set).WithDescription("a note")
+schema.VariantOf("circle", circleSchema, narrow, widen).WithDescription("a circle")
+schema.DynamicField("note", schema.Text()).Optional()
 ```
 
 `Optional()` applies to a field whose absence can be *seen* — a described field,
@@ -337,7 +337,7 @@ it read. That is a power a streaming source does not have, so it is asked for
 rather than assumed:
 
 ```go
-type Buffering interface {
+type Bufferer interface {
     Buffer() (dynamic.Value, error)
 }
 ```
@@ -359,14 +359,14 @@ refused for the same reason.
 ## Constraints
 
 A kind says a value is a number; a constraint says which numbers. A constraint
-is a **value**, and it is applied by a method — the same rule `Named` and
-`Documented` follow, because all three change a schema rather than build one.
+is a **value**, and it is applied by a method — the same rule `WithName` and
+`WithDescription` follow, because all three change a schema rather than build one.
 
 ```go
-name  := schema.Text().Constrained(schema.MinLength(1), schema.MaxLength(32))
-pages := schema.Int().Constrained(schema.AtLeast[int](1), schema.AtMost[int](20000))
-code  := schema.Text().Constrained(schema.Matching(`^[A-Z]{2}-[0-9]{4}$`))
-tags  := schema.List(schema.Text()).Constrained(schema.MinItems[string](1))
+name  := schema.Text().Check(schema.MinLength(1), schema.MaxLength(32))
+pages := schema.Int().Check(schema.AtLeast[int](1), schema.AtMost[int](20000))
+code  := schema.Text().Check(schema.Pattern(`^[A-Z]{2}-[0-9]{4}$`))
+tags  := schema.List(schema.Text()).Check(schema.MinItems[string](1))
 ```
 
 | Constraint | Narrows |
@@ -374,7 +374,7 @@ tags  := schema.List(schema.Text()).Constrained(schema.MinItems[string](1))
 | `AtLeast`, `AtMost` | a number, inclusively |
 | `Above`, `Below` | a number, exclusively |
 | `MinLength`, `MaxLength` | a string, in **characters** rather than bytes |
-| `Matching(pattern)` | a string, by a Go (RE2) regular expression |
+| `Pattern(pattern)` | a string, by a Go (RE2) regular expression |
 | `MinItems`, `MaxItems` | how many elements a list carries |
 
 `Constraint[A]` is the type it is about, which is what keeps a misapplication a
@@ -463,9 +463,9 @@ is the whole difference between naming a thing and saying where it is; it
 annotates as `uri`, because that is the registered name and there is none for a
 locator.
 
-`Formatted(name)` is the open case: the format vocabulary is open, so a name
+`TextFormat(name)` is the open case: the format vocabulary is open, so a name
 this package has not been taught is carried into the projection and **claims
-nothing**. `Matching(pattern)` is the escape hatch for a rule of your own.
+nothing**. `Pattern(pattern)` is the escape hatch for a rule of your own.
 
 A refinement a schema cannot enforce should not look like one it does, which is
 why those two are named differently from the rest.
@@ -517,9 +517,9 @@ if err := schema.Validate(BookSchema); err != nil {
 }
 ```
 
-`Validate` cannot see through `Deferred`: at the moment an enclosing schema is
+`Validate` cannot see through `Suspend`: at the moment an enclosing schema is
 being built the deferred one does not exist yet, so asking would report a fault
-that is not real. A mistake behind a `Deferred` surfaces on first use. That is
+that is not real. A mistake behind a `Suspend` surfaces on first use. That is
 the cost of expressing recursion at all.
 
 ## Projections

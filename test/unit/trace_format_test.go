@@ -59,7 +59,7 @@ func (source *traceSource) take(prefix string, wanted string) (string, error) {
 	}
 	token := source.tokens[source.at]
 	if !strings.HasPrefix(token, prefix) {
-		return "", errTraceWanted(wanted, token)
+		return "", traceMismatch(wanted, token)
 	}
 	source.at++
 	return strings.TrimPrefix(token, prefix), nil
@@ -179,8 +179,8 @@ func (source *traceSource) Skip() error {
 	}
 }
 
-// traced encodes with the trace sink and decodes the result back.
-func traced[A any](shape schema.Schema[A], value A) ([]string, A, error) {
+// trace encodes with the trace sink and decodes the result back.
+func trace[A any](shape schema.Schema[A], value A) ([]string, A, error) {
 	sink := &traceSink{}
 	if err := schema.Encode(shape, value, sink); err != nil {
 		var missing A

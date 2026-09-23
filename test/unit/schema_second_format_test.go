@@ -12,7 +12,7 @@ import (
 
 var errTraceExhausted = errors.New("the trace ended early")
 
-func errTraceWanted(wanted string, found string) error {
+func traceMismatch(wanted string, found string) error {
 	return errors.New("wanted " + wanted + ", found " + found)
 }
 
@@ -26,7 +26,7 @@ func TestOneDescriptionServesASecondFormat(t *testing.T) {
 		Subtitle: "A field guide",
 		HasIndex: true,
 	}
-	_, decoded, err := traced(bookSchema, original)
+	_, decoded, err := trace(bookSchema, original)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestOneDescriptionServesASecondFormat(t *testing.T) {
 }
 
 func TestTheTraversalASchemaDrivesIsTheOneAFormatMustImplement(t *testing.T) {
-	tokens, _, err := traced(bookSchema, Book{Title: "T", Authors: []string{"a"}, Pages: 1})
+	tokens, _, err := trace(bookSchema, Book{Title: "T", Authors: []string{"a"}, Pages: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestEveryShapeReachesTheSecondFormat(t *testing.T) {
 		Nested:   []int{1, 2},
 		Detail:   Detail{Note: "kept"},
 	}
-	tokens, decoded, err := traced(everyShapeSchema, sample)
+	tokens, decoded, err := trace(everyShapeSchema, sample)
 	if err != nil {
 		t.Fatal(err)
 	}

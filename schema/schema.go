@@ -101,14 +101,14 @@ func of[A any](
 	return Schema[A]{node: node, encode: encode, decode: decode}
 }
 
-// faultedSchema builds a schema that reports a declaration mistake whenever it is
+// faultySchema builds a schema that reports a declaration mistake whenever it is
 // used, keeping whatever structure was declared so a projection still has
 // something to show.
-func faultedSchema[A any](node structure.Node, err error) Schema[A] {
+func faultySchema[A any](node structure.Node, err error) Schema[A] {
 	return Schema[A]{node: node, fault: err}
 }
 
-// Named gives a schema a name, so projections that have reusable components
+// WithName gives a schema a name, so projections that have reusable components
 // describe it once and refer to it thereafter.
 //
 // It applies to an object or a union; naming a scalar or a list has no meaning
@@ -116,7 +116,7 @@ func faultedSchema[A any](node structure.Node, err error) Schema[A] {
 // schema rather than building one, and every modifier here is one -- a reader
 // should not have to remember which of them wrap and which are called on what
 // they change.
-func (schema Schema[A]) Named(name string) Schema[A] {
+func (schema Schema[A]) WithName(name string) Schema[A] {
 	switch shape := schema.node.(type) {
 	case structure.Object:
 		shape.Name = name
@@ -129,8 +129,8 @@ func (schema Schema[A]) Named(name string) Schema[A] {
 	}
 }
 
-// Documented attaches prose a projection can carry into its output.
-func (schema Schema[A]) Documented(doc string) Schema[A] {
+// WithDescription attaches prose a projection can carry into its output.
+func (schema Schema[A]) WithDescription(doc string) Schema[A] {
 	switch shape := schema.node.(type) {
 	case structure.Object:
 		shape.Doc = doc
@@ -165,7 +165,7 @@ func TransformOrFail[A, B any](
 	from func(B) (A, error),
 ) Schema[B] {
 	if fault := Validate(inner); fault != nil {
-		return faultedSchema[B](inner.node, fault)
+		return faultySchema[B](inner.node, fault)
 	}
 	return of(
 		inner.node,
@@ -192,7 +192,7 @@ func TransformOrFail[A, B any](
 	)
 }
 
-// Deferred describes a schema that has not been built yet.
+// Suspend describes a schema that has not been built yet.
 //
 // It is how a recursive type is declared, because Go cannot refer to a variable
 // in its own initialiser:
@@ -201,7 +201,7 @@ func TransformOrFail[A, B any](
 //	nodeSchema = schema.Struct[Node]("Node",
 //	    schema.FieldOf("label", schema.Text(), getLabel, setLabel),
 //	    schema.FieldOf("children",
-//	        schema.List(schema.Deferred(func() schema.Schema[Node] { return nodeSchema })),
+//	        schema.List(schema.Suspend(func() schema.Schema[Node] { return nodeSchema })),
 //	        getChildren, setChildren),
 //	)
 //
@@ -211,10 +211,10 @@ func TransformOrFail[A, B any](
 //
 // Validate cannot see through it. At the moment an enclosing schema is being
 // built the deferred one does not exist yet, so asking about it would report a
-// fault that is not real. A mistake behind a Deferred is therefore reported on
+// fault that is not real. A mistake behind a Suspend is therefore reported on
 // first use rather than by Validate, which is the cost of expressing recursion
 // at all.
-func Deferred[A any](resolve func() Schema[A]) Schema[A] {
+func Suspend[A any](resolve func() Schema[A]) Schema[A] {
 	return of[A](
 		structure.Reference{Resolve: func() structure.Node { return resolve().node }},
 		func(value A, into Sink) error { return Encode(resolve(), value, into) },

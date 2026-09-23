@@ -60,7 +60,7 @@ func runCatalog(runtime *effect.Runtime, workspace string) {
 		fail(fmt.Errorf("catalogue: %v", exit))
 	}
 	fmt.Printf("catalogue: %d books, %d shelved, components %v\n",
-		report.Books, report.Shelved, report.Components)
+		report.Books, report.OnShelf, report.Components)
 
 	contract, err := os.ReadFile(contractPath)
 	if err != nil {

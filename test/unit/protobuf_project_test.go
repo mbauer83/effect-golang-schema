@@ -35,24 +35,24 @@ var consignmentSchema = schema.Struct[consignment]("Consignment",
 	schema.FieldOf("reference", schema.UUID(),
 		func(held consignment) string { return held.Reference },
 		func(held *consignment, value string) { held.Reference = value }).
-		Numbered(1).
-		Documented("Reference identifies the consignment."),
-	schema.FieldOf("weight", schema.Float64().Constrained(schema.Above[float64](0)),
+		WithNumber(1).
+		WithDescription("Reference identifies the consignment."),
+	schema.FieldOf("weight", schema.Float64().Check(schema.Above[float64](0)),
 		func(held consignment) float64 { return held.Weight },
 		func(held *consignment, value float64) { held.Weight = value }).
-		Numbered(2),
-	schema.FieldOf("parcels", schema.Int32().Constrained(schema.AtLeast[int32](1)),
+		WithNumber(2),
+	schema.FieldOf("parcels", schema.Int32().Check(schema.AtLeast[int32](1)),
 		func(held consignment) int32 { return held.Parcels },
 		func(held *consignment, value int32) { held.Parcels = value }).
-		Numbered(3),
+		WithNumber(3),
 	schema.FieldOf("fragile", schema.Bool(),
 		func(held consignment) bool { return held.Fragile },
 		func(held *consignment, value bool) { held.Fragile = value }).
-		Numbered(4),
+		WithNumber(4),
 	schema.FieldOf("labels", schema.List(schema.Text()),
 		func(held consignment) []string { return held.Labels },
 		func(held *consignment, value []string) { held.Labels = value }).
-		Numbered(5),
+		WithNumber(5),
 	schema.OptionalFieldOf("note", schema.Text(),
 		func(held consignment) (string, bool) {
 			if held.Note == nil {
@@ -61,11 +61,11 @@ var consignmentSchema = schema.Struct[consignment]("Consignment",
 			return *held.Note, true
 		},
 		func(held *consignment, value string) { held.Note = &value }).
-		Numbered(6),
-).Documented("Consignment is one shipment.")
+		WithNumber(6),
+).WithDescription("Consignment is one shipment.")
 
 // compiled compiles a projected document and returns its root message.
-func protoCompiled(t *testing.T, document protobuf.Document) protoreflect.MessageDescriptor {
+func compileProto(t *testing.T, document protobuf.Document) protoreflect.MessageDescriptor {
 	t.Helper()
 	rendered := document.Render()
 	compiler := protocompile.Compiler{
@@ -102,7 +102,7 @@ func TestTheProjectedFileCompilesAndSaysWhatTheDescriptionSaid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	message := protoCompiled(t, document)
+	message := compileProto(t, document)
 
 	// Numbers, because a number is what protobuf's compatibility rests on and
 	// the description is where it lives.

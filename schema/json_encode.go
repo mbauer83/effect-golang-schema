@@ -13,11 +13,11 @@ import (
 
 // EncodeJSON writes a value as JSON.
 func EncodeJSON[A any](schema Schema[A], value A) ([]byte, error) {
-	var written bytes.Buffer
-	if err := EncodeJSONTo(schema, value, &written); err != nil {
+	var buffer bytes.Buffer
+	if err := EncodeJSONTo(schema, value, &buffer); err != nil {
 		return nil, err
 	}
-	return written.Bytes(), nil
+	return buffer.Bytes(), nil
 }
 
 // EncodeJSONTo writes a value as JSON to a writer, which is what a response

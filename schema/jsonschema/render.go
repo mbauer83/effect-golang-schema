@@ -17,12 +17,12 @@ const Dialect = "https://json-schema.org/draft/2020-12/schema"
 // Render writes the root schema as JSON, with its components under $defs, which
 // is where the 2020-12 dialect expects them.
 func (document Document) Render() ([]byte, error) {
-	var written bytes.Buffer
-	encoder := jsontext.NewEncoder(&written)
+	var buffer bytes.Buffer
+	encoder := jsontext.NewEncoder(&buffer)
 	if err := document.writeRoot(encoder); err != nil {
 		return nil, err
 	}
-	return written.Bytes(), nil
+	return buffer.Bytes(), nil
 }
 
 func (document Document) writeRoot(encoder *jsontext.Encoder) error {
@@ -71,12 +71,12 @@ func (document Document) writeDefinitions(encoder *jsontext.Encoder) error {
 // It is what an enclosing document embeds: an OpenAPI component is a schema on
 // its own terms but not a document of its own, so it carries no $schema.
 func (node Node) Render() ([]byte, error) {
-	var written bytes.Buffer
-	encoder := jsontext.NewEncoder(&written)
+	var buffer bytes.Buffer
+	encoder := jsontext.NewEncoder(&buffer)
 	if err := writeNode(encoder, node); err != nil {
 		return nil, err
 	}
-	return written.Bytes(), nil
+	return buffer.Bytes(), nil
 }
 
 func writeNode(encoder *jsontext.Encoder, node Node) error {

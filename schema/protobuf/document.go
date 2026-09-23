@@ -81,81 +81,81 @@ type Field struct {
 
 // Render writes the document as a .proto file.
 func (document Document) Render() string {
-	written := &strings.Builder{}
-	written.WriteString("syntax = \"proto3\";\n")
+	out := &strings.Builder{}
+	out.WriteString("syntax = \"proto3\";\n")
 	if document.Package != "" {
-		written.WriteString("\npackage " + document.Package + ";\n")
+		out.WriteString("\npackage " + document.Package + ";\n")
 	}
 	if len(document.Imports) > 0 {
-		written.WriteString("\n")
-		for _, imported := range document.Imports {
-			written.WriteString("import \"" + imported + "\";\n")
+		out.WriteString("\n")
+		for _, path := range document.Imports {
+			out.WriteString("import \"" + path + "\";\n")
 		}
 	}
 	for _, message := range document.Messages {
-		written.WriteString("\n")
-		message.render(written)
+		out.WriteString("\n")
+		message.render(out)
 	}
 	for _, service := range document.Services {
-		written.WriteString("\n")
-		service.render(written)
+		out.WriteString("\n")
+		service.render(out)
 	}
-	return written.String()
+	return out.String()
 }
 
-func (service Service) render(written *strings.Builder) {
-	writeComment(written, "", service.Doc)
-	written.WriteString("service " + service.Name + " {\n")
+func (service Service) render(out *strings.Builder) {
+	writeComment(out, "", service.Doc)
+	out.WriteString("service " + service.Name + " {\n")
 	for _, method := range service.Methods {
-		writeComment(written, "  ", method.Doc)
-		written.WriteString("  rpc " + method.Name +
+		writeComment(out, "  ", method.Doc)
+		out.WriteString("  rpc " + method.Name +
 			"(" + method.Request + ") returns (" + method.Response + ");\n")
 	}
-	written.WriteString("}\n")
+	out.WriteString("}\n")
 }
 
-func (message Message) render(written *strings.Builder) {
-	writeComment(written, "", message.Doc)
-	written.WriteString("message " + message.Name + " {\n")
+func (message Message) render(out *strings.Builder) {
+	writeComment(out, "", message.Doc)
+	out.WriteString("message " + message.Name + " {\n")
 
 	indent := "  "
 	if message.OneOf != "" {
-		written.WriteString("  oneof " + message.OneOf + " {\n")
+		out.WriteString("  oneof " + message.OneOf + " {\n")
 		indent = "    "
 	}
 	for _, field := range message.Fields {
-		field.render(written, indent)
+		field.render(out, indent)
 	}
 	if message.OneOf != "" {
-		written.WriteString("  }\n")
+		out.WriteString("  }\n")
 	}
-	written.WriteString("}\n")
+	out.WriteString("}\n")
 }
 
-func (field Field) render(written *strings.Builder, indent string) {
-	writeComment(written, indent, field.Doc)
+func (field Field) render(out *strings.Builder, indent string) {
+	writeComment(out, indent, field.Doc)
 	for _, note := range field.Notes {
-		written.WriteString(indent + "// " + note + "\n")
+		out.WriteString(indent + "// " + note + "\n")
 	}
 
-	written.WriteString(indent)
+	out.WriteString(indent)
 	if field.Repeated {
-		written.WriteString("repeated ")
+		out.WriteString("repeated ")
 	}
 	if field.Optional {
-		written.WriteString("optional ")
+		out.WriteString("optional ")
 	}
-	written.WriteString(field.Type + " " + field.Name + " = " +
+	out.WriteString(field.Type + " " + field.Name + " = " +
 		strconv.Itoa(field.Number) + ";\n")
 }
 
 // writeComment writes prose as a leading comment, one line per line of it, so a
 // multi-paragraph doc comment does not become one unreadable line.
-func writeComment(written *strings.Builder, indent string, doc string) {
+func writeComment(out *strings.Builder, indent string, doc string) {
 	if doc == "" {
 		return
 	}
 	for _, line := range strings.Split(strings.TrimSpace(doc), "\n") {
-		written.WriteString(indent + "// " + strings.TrimSpace(line) + "\n")
+		out.WriteString(indent + "// " + strings.TrimSpace(line) + "\n")
 	}
 }

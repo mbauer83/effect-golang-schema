@@ -24,25 +24,25 @@ func TestTheProjectionRefusesWhatWouldNotStaySaid(t *testing.T) {
 	}{
 		"a field with no number": {
 			shape: schema.Struct[dynamic.Value]("Unnumbered",
-				schema.DescribedField("weight", schema.Float64())),
+				schema.DynamicField("weight", schema.Float64())),
 			reason: "would change when the declaration was reordered",
 		},
 		"an object with no name": {
 			shape: schema.Struct[dynamic.Value]("Holder",
-				schema.DescribedField("inner",
-					schema.Struct[dynamic.Value]("", schema.DescribedField("x", schema.Int32()).Numbered(1))).
-					Numbered(1)),
+				schema.DynamicField("inner",
+					schema.Struct[dynamic.Value]("", schema.DynamicField("x", schema.Int32()).WithNumber(1))).
+					WithNumber(1)),
 			reason: "would change when that field did",
 		},
 		"a list of lists": {
 			shape: schema.Struct[dynamic.Value]("Nested",
-				schema.DescribedField("rows",
-					schema.List(schema.List(schema.Int32()))).Numbered(1)),
+				schema.DynamicField("rows",
+					schema.List(schema.List(schema.Int32()))).WithNumber(1)),
 			reason: "no repeated repeated",
 		},
 		"a variant that is a list": {
 			shape: schema.OneOf[dynamic.Value]("Choice",
-				schema.DescribedVariant("many", schema.List(schema.Int32())).Numbered(1)),
+				schema.DynamicVariant("many", schema.List(schema.Int32())).WithNumber(1)),
 			reason: "cannot be repeated",
 		},
 	} {
@@ -65,8 +65,8 @@ func TestAUnionWithADiscriminatingFieldIsRefused(t *testing.T) {
 	// projects, and this says so rather than emitting a message with a
 	// redundant field in it.
 	tagged := schema.OneOfBy[dynamic.Value]("Tolerance", "type",
-		schema.DescribedVariant("iso2768", schema.Struct[dynamic.Value]("Iso2768",
-			schema.DescribedField("grade", schema.Text()).Numbered(1))).Numbered(1),
+		schema.DynamicVariant("iso2768", schema.Struct[dynamic.Value]("Iso2768",
+			schema.DynamicField("grade", schema.Text()).WithNumber(1))).WithNumber(1),
 	)
 
 	_, err := protobuf.Project(tagged.Structure(), "test.v1")

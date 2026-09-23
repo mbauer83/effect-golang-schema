@@ -24,15 +24,15 @@ func schemaExpression(node structure.Node) (string, error) {
 	case structure.Sequence:
 		return sequenceExpression(shape)
 	case structure.Mapping:
-		return wrappedExpression("schema.Map", shape.Value)
+		return wrapExpression("schema.Map", shape.Value)
 	case structure.Nullable:
-		return wrappedExpression("schema.Nullable", shape.Inner)
+		return wrapExpression("schema.Nullable", shape.Inner)
 	case structure.Object:
-		return namedExpression(shape.Name, "an object")
+		return referenceExpression(shape.Name, "an object")
 	case structure.Union:
-		return namedExpression(shape.Name, "a union")
+		return referenceExpression(shape.Name, "a union")
 	case structure.Reference:
-		return namedExpression(shape.Name, "a reference")
+		return referenceExpression(shape.Name, "a reference")
 	default:
 		return "", errors.New("this shape has no schema expression")
 	}
@@ -46,21 +46,21 @@ func schemaExpression(node structure.Node) (string, error) {
 // asking the constructor what it records, rather than by a second table that
 // could fall out of step with it.
 func scalarExpression(shape structure.Scalar) (string, error) {
-	base, carried, holds := baseExpression(shape)
-	return constrainExpression(base, holds, shape.Constraints[carried:])
+	base, count, goType := baseExpression(shape)
+	return constrainExpression(base, goType, shape.Constraints[count:])
 }
 
 // baseExpression is the constructor for a scalar, how many of its constraints
 // that constructor already records, and the Go type it describes.
 func baseExpression(shape structure.Scalar) (string, int, string) {
-	if known, checked := schema.FormatConstructors[shape.Format]; checked {
-		return known.Call, known.Carries, known.Holds
+	if known, isFormat := schema.FormatConstructors[shape.Format]; isFormat {
+		return known.Call, known.ConstraintCount, known.GoType
 	}
 	if shape.Format != "" {
-		return "schema.Formatted(" + strconv.Quote(shape.Format) + ")", 0, "string"
+		return "schema.TextFormat(" + strconv.Quote(shape.Format) + ")", 0, "string"
 	}
 	if known, precise := schema.PrecisionConstructors[shape.Precision]; precise {
-		return known.Call, known.Carries, known.Holds
+		return known.Call, known.ConstraintCount, known.GoType
 	}
 	return kindExpression(shape.Kind), 0, kindType(shape.Kind)
 }
@@ -101,17 +101,17 @@ func kindExpression(kind structure.Kind) string {
 }
 
 func sequenceExpression(shape structure.Sequence) (string, error) {
-	listed, err := wrappedExpression("schema.List", shape.Element)
+	list, err := wrapExpression("schema.List", shape.Element)
 	if err != nil {
 		return "", err
 	}
-	element, elementTypeed := elementType(shape.Element)
-	if !elementTypeed && len(shape.Constraints) > 0 {
+	element, nameable := elementType(shape.Element)
+	if !nameable && len(shape.Constraints) > 0 {
 		return "", errors.New(
 			"a bound on a list of that shape needs the element's Go type named, " +
 				"and this description does not carry it")
 	}
-	return constrainExpression(listed, element, shape.Constraints)
+	return constrainExpression(list, element, shape.Constraints)
 }
 
 // constrainExpression applies the constraints as one call, in the order the
@@ -123,21 +123,21 @@ func sequenceExpression(shape structure.Sequence) (string, error) {
 // it.
 func constrainExpression(
 	shape string,
-	holds string,
+	goType string,
 	constraints []structure.Constraint,
 ) (string, error) {
 	if len(constraints) == 0 {
 		return shape, nil
 	}
-	applied := make([]string, 0, len(constraints))
+	calls := make([]string, 0, len(constraints))
 	for _, constraint := range constraints {
-		call, err := constraintCall(constraint, holds)
+		call, err := constraintCall(constraint, goType)
 		if err != nil {
 			return "", err
 		}
-		applied = append(applied, call)
+		calls = append(calls, call)
 	}
-	return shape + ".Constrained(" + strings.Join(applied, ", ") + ")", nil
+	return shape + ".Check(" + strings.Join(calls, ", ") + ")", nil
 }
 
 // constraintCall is one constraint as the call that builds it.
@@ -145,29 +145,29 @@ func constrainExpression(
 // A bound and an item count name the type they are about, because the value
 // carries it and there is no longer an inner schema for the compiler to read
 // it from. A length does not: it is only ever about text.
-func constraintCall(constraint structure.Constraint, holds string) (string, error) {
-	funced := func(call string, value string) string {
-		return "schema." + call + "[" + holds + "](" + value + ")"
+func constraintCall(constraint structure.Constraint, goType string) (string, error) {
+	generic := func(call string, value string) string {
+		return "schema." + call + "[" + goType + "](" + value + ")"
 	}
 	switch narrowed := constraint.(type) {
 	case structure.AtLeast:
-		return funced("AtLeast", bound(narrowed.Value)), nil
+		return generic("AtLeast", bound(narrowed.Value)), nil
 	case structure.AtMost:
-		return funced("AtMost", bound(narrowed.Value)), nil
+		return generic("AtMost", bound(narrowed.Value)), nil
 	case structure.Above:
-		return funced("Above", bound(narrowed.Value)), nil
+		return generic("Above", bound(narrowed.Value)), nil
 	case structure.Below:
-		return funced("Below", bound(narrowed.Value)), nil
+		return generic("Below", bound(narrowed.Value)), nil
 	case structure.MinLength:
 		return "schema.MinLength(" + strconv.Itoa(narrowed.Value) + ")", nil
 	case structure.MaxLength:
 		return "schema.MaxLength(" + strconv.Itoa(narrowed.Value) + ")", nil
 	case structure.Pattern:
-		return "schema.Matching(" + strconv.Quote(narrowed.Expression) + ")", nil
+		return "schema.Pattern(" + strconv.Quote(narrowed.Expression) + ")", nil
 	case structure.MinItems:
-		return funced("MinItems", strconv.Itoa(narrowed.Value)), nil
+		return generic("MinItems", strconv.Itoa(narrowed.Value)), nil
 	case structure.MaxItems:
-		return funced("MaxItems", strconv.Itoa(narrowed.Value)), nil
+		return generic("MaxItems", strconv.Itoa(narrowed.Value)), nil
 	default:
 		return "", errors.New("this constraint has no constructor")
 	}
@@ -182,14 +182,14 @@ func constraintCall(constraint structure.Constraint, holds string) (string, erro
 func elementType(node structure.Node) (string, bool) {
 	switch shape := node.(type) {
 	case structure.Scalar:
-		_, _, holds := baseExpression(shape)
-		return holds, true
+		_, _, goType := baseExpression(shape)
+		return goType, true
 	case structure.Sequence:
-		within, elementTypeed := elementType(shape.Element)
-		return "[]" + within, elementTypeed
+		inner, nameable := elementType(shape.Element)
+		return "[]" + inner, nameable
 	case structure.Nullable:
-		within, elementTypeed := elementType(shape.Inner)
-		return "*" + within, elementTypeed
+		inner, nameable := elementType(shape.Inner)
+		return "*" + inner, nameable
 	default:
 		return "", false
 	}
@@ -201,15 +201,15 @@ func bound(value float64) string {
 	return strconv.FormatFloat(value, 'g', -1, 64)
 }
 
-func wrappedExpression(combinator string, inner structure.Node) (string, error) {
-	within, err := schemaExpression(inner)
+func wrapExpression(combinator string, inner structure.Node) (string, error) {
+	expression, err := schemaExpression(inner)
 	if err != nil {
 		return "", err
 	}
-	return combinator + "(" + within + ")", nil
+	return combinator + "(" + expression + ")", nil
 }
 
-func namedExpression(name string, what string) (string, error) {
+func referenceExpression(name string, what string) (string, error) {
 	if name == "" {
 		return "", fmt.Errorf("%s has no name, and a schema is referred to by name", what)
 	}

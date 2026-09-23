@@ -5,24 +5,24 @@ package jsonschema
 import "github.com/mbauer83/effect-golang-schema/schema/structure"
 
 func scalarNode(shape structure.Scalar) Node {
-	described := Node{
+	schema := Node{
 		Format: formatFor(shape),
 		Bounds: bounds(shape.Constraints),
 	}
 	switch shape.Kind {
 	case structure.Integer:
-		described.Type = "integer"
+		schema.Type = "integer"
 	case structure.Number:
-		described.Type = "number"
+		schema.Type = "number"
 	case structure.Boolean:
-		described.Type = "boolean"
-		described.Format = ""
+		schema.Type = "boolean"
+		schema.Format = ""
 	default:
 		// Text, Bytes and Timestamp are all strings on the wire; their format
 		// is what tells them apart, and the schema already set it.
-		described.Type = "string"
+		schema.Type = "string"
 	}
-	return described
+	return schema
 }
 
 // formatFor is the format keyword the shape carries, or the one its Go width
@@ -35,10 +35,10 @@ func formatFor(shape structure.Scalar) string {
 	if shape.Format != "" {
 		return shape.Format
 	}
-	return registeredFormats[shape.Precision]
+	return precisionFormats[shape.Precision]
 }
 
-var registeredFormats = map[structure.Precision]string{
+var precisionFormats = map[structure.Precision]string{
 	structure.Int32Bits:   "int32",
 	structure.Int64Bits:   "int64",
 	structure.Float32Bits: "float",
@@ -49,28 +49,28 @@ var registeredFormats = map[structure.Precision]string{
 // same thing. A constraint with no keyword would be silently dropped, so the
 // switch is exhaustive over a sealed set for exactly that reason.
 func bounds(constraints []structure.Constraint) Bounds {
-	described := Bounds{}
+	keywords := Bounds{}
 	for _, constraint := range constraints {
 		switch narrowed := constraint.(type) {
 		case structure.AtLeast:
-			described.Minimum = &narrowed.Value
+			keywords.Minimum = &narrowed.Value
 		case structure.AtMost:
-			described.Maximum = &narrowed.Value
+			keywords.Maximum = &narrowed.Value
 		case structure.Above:
-			described.ExclusiveMinimum = &narrowed.Value
+			keywords.ExclusiveMinimum = &narrowed.Value
 		case structure.Below:
-			described.ExclusiveMaximum = &narrowed.Value
+			keywords.ExclusiveMaximum = &narrowed.Value
 		case structure.MinLength:
-			described.MinLength = &narrowed.Value
+			keywords.MinLength = &narrowed.Value
 		case structure.MaxLength:
-			described.MaxLength = &narrowed.Value
+			keywords.MaxLength = &narrowed.Value
 		case structure.Pattern:
-			described.Pattern = narrowed.Expression
+			keywords.Pattern = narrowed.Expression
 		case structure.MinItems:
-			described.MinItems = &narrowed.Value
+			keywords.MinItems = &narrowed.Value
 		case structure.MaxItems:
-			described.MaxItems = &narrowed.Value
+			keywords.MaxItems = &narrowed.Value
 		}
 	}
-	return described
+	return keywords
 }

@@ -22,22 +22,22 @@ type Item struct {
 
 // ItemSchema describes Item. It is generated from its description.
 var ItemSchema = schema.Struct[Item]("Item",
-	schema.FieldOf("sku", schema.Text().Constrained(schema.Matching("^[A-Z]{3}-[0-9]{5}$")),
+	schema.FieldOf("sku", schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")),
 		func(value Item) string { return value.Sku },
-		func(value *Item, field string) { value.Sku = field }).Documented("the stock-keeping unit, three letters and five digits"),
+		func(value *Item, field string) { value.Sku = field }).WithDescription("the stock-keeping unit, three letters and five digits"),
 	schema.FieldOf("onHand", schema.Uint16(),
 		func(value Item) uint16 { return value.OnHand },
-		func(value *Item, field uint16) { value.OnHand = field }).Documented("how many are on hand"),
+		func(value *Item, field uint16) { value.OnHand = field }).WithDescription("how many are on hand"),
 	schema.FieldOf("weightGrams", schema.Float32(),
 		func(value Item) float32 { return value.WeightGrams },
-		func(value *Item, field float32) { value.WeightGrams = field }).Documented("what one unit weighs"),
+		func(value *Item, field float32) { value.WeightGrams = field }).WithDescription("what one unit weighs"),
 	schema.FieldOf("id", schema.UUID(),
 		func(value Item) string { return value.ID },
 		func(value *Item, field string) { value.ID = field }),
-	schema.FieldOf("tags", schema.List(schema.Text()).Constrained(schema.MinItems[string](1)),
+	schema.FieldOf("tags", schema.List(schema.Text()).Check(schema.MinItems[string](1)),
 		func(value Item) []string { return value.Tags },
 		func(value *Item, field []string) { value.Tags = field }),
-	schema.OptionalFieldOf("note", schema.Text().Constrained(schema.MaxLength(200)),
+	schema.OptionalFieldOf("note", schema.Text().Check(schema.MaxLength(200)),
 		func(value Item) (string, bool) {
 			var absent string
 			if value.Note == nil {
@@ -46,7 +46,7 @@ var ItemSchema = schema.Struct[Item]("Item",
 			return *value.Note, true
 		},
 		func(value *Item, field string) { value.Note = &field }),
-).Documented("one stocked line")
+).WithDescription("one stocked line")
 
 // a change in what is stocked
 //
@@ -57,11 +57,11 @@ type Movement interface{ isMovement() }
 var MovementSchema = schema.OneOf[Movement]("Movement",
 	schema.VariantOf("received", ReceivedSchema,
 		func(value Movement) (Received, bool) { narrowed, is := value.(Received); return narrowed, is },
-		func(variant Received) Movement { return variant }).Documented("stock arriving"),
+		func(variant Received) Movement { return variant }).WithDescription("stock arriving"),
 	schema.VariantOf("shipped", ShippedSchema,
 		func(value Movement) (Shipped, bool) { narrowed, is := value.(Shipped); return narrowed, is },
-		func(variant Shipped) Movement { return variant }).Documented("stock leaving"),
-).Documented("a change in what is stocked")
+		func(variant Shipped) Movement { return variant }).WithDescription("stock leaving"),
+).WithDescription("a change in what is stocked")
 
 // Received is generated from its description.
 type Received struct {

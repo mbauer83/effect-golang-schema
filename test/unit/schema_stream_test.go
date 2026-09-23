@@ -43,7 +43,7 @@ func TestAStreamThatEndsEarlyIsReportedAsTruncation(t *testing.T) {
 }
 
 func TestAWriterThatFailsIsReportedRatherThanIgnored(t *testing.T) {
-	err := schema.EncodeJSONTo(bookSchema, Book{Authors: []string{}}, refusingWriter{})
+	err := schema.EncodeJSONTo(bookSchema, Book{Authors: []string{}}, errWriter{})
 	if !errors.Is(err, errRefused) {
 		t.Fatalf("expected the writer's failure to surface, got %v", err)
 	}
@@ -51,6 +51,6 @@ func TestAWriterThatFailsIsReportedRatherThanIgnored(t *testing.T) {
 
 var errRefused = errors.New("the writer refused")
 
-type refusingWriter struct{}
+type errWriter struct{}
 
-func (refusingWriter) Write([]byte) (int, error) { return 0, errRefused }
+func (errWriter) Write([]byte) (int, error) { return 0, errRefused }

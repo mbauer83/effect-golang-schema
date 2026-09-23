@@ -18,10 +18,10 @@ import (
 // shipped is a union with no Go type, so a oneof is exercised without a second
 // Go hierarchy to declare.
 var shipped = schema.OneOf[dynamic.Value]("Shipped",
-	schema.DescribedVariant("byRoad", schema.Struct[dynamic.Value]("ByRoad",
-		schema.DescribedField("plate", schema.Text()).Numbered(1))).Numbered(1),
-	schema.DescribedVariant("byRail", schema.Struct[dynamic.Value]("ByRail",
-		schema.DescribedField("wagon", schema.Text()).Numbered(1))).Numbered(2),
+	schema.DynamicVariant("byRoad", schema.Struct[dynamic.Value]("ByRoad",
+		schema.DynamicField("plate", schema.Text()).WithNumber(1))).WithNumber(1),
+	schema.DynamicVariant("byRail", schema.Struct[dynamic.Value]("ByRail",
+		schema.DynamicField("wagon", schema.Text()).WithNumber(1))).WithNumber(2),
 )
 
 func TestAUnionCrossesAsAOneofAndProtobufAgreesWhichWasChosen(t *testing.T) {
@@ -59,7 +59,7 @@ func TestAFieldHoldingItsZeroCostsNoBytesAndComesBackAsTheZero(t *testing.T) {
 	// The heart of proto3's presence rules. An ordinary field writes nothing
 	// for its zero, so absent and zero are the same message -- and a reader
 	// that treated absent as missing would find every false bool missing.
-	plain := consigned()
+	plain := sampleConsignment()
 	plain.Fragile = false
 	plain.Note = nil
 
@@ -93,7 +93,7 @@ func TestAFieldTheDescriptionDoesNotKnowIsSkipped(t *testing.T) {
 	// The property protobuf is chosen for: a message written by a newer program
 	// stays readable by an older one. Field 99 is not in the description, so it
 	// is passed over rather than being an error.
-	written, err := protobuf.Encode(consignmentSchema, consigned())
+	written, err := protobuf.Encode(consignmentSchema, sampleConsignment())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestAFieldTheDescriptionDoesNotKnowIsSkipped(t *testing.T) {
 	}
 	// Every field after it, because a skip of the wrong length desynchronises
 	// the reader and the damage shows up here rather than at the skip.
-	if back.Reference != consigned().Reference {
+	if back.Reference != sampleConsignment().Reference {
 		t.Errorf("unexpected value: %#v", back)
 	}
 	if back.Parcels != 3 || !back.Fragile || back.Weight != 12.5 {

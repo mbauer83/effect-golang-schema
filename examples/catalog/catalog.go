@@ -48,8 +48,8 @@ type InStock struct {
 	Count int
 }
 
-// Awaited is a title not yet arrived, with when it is expected.
-type Awaited struct {
+// OnOrder is a title not yet arrived, with when it is expected.
+type OnOrder struct {
 	// Expected is when the title should arrive.
 	Expected time.Time
 }
@@ -58,15 +58,15 @@ type Awaited struct {
 type Discontinued struct{}
 
 func (InStock) availability()      {}
-func (Awaited) availability()      {}
+func (OnOrder) availability()      {}
 func (Discontinued) availability() {}
 
 // Report is what one run of the program found and produced.
 type Report struct {
 	// Books is how many entries the document held.
 	Books int
-	// Shelved is how many of them were in stock.
-	Shelved int
+	// OnShelf is how many of them were in stock.
+	OnShelf int
 	// Components names the reusable shapes the published contract declares,
 	// which is the evidence that a type used twice is described once.
 	Components []string

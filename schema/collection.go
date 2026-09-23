@@ -14,7 +14,7 @@ import (
 func List[A any](element Schema[A]) Schema[[]A] {
 	node := structure.Sequence{Element: element.node}
 	if fault := Validate(element); fault != nil {
-		return faultedSchema[[]A](node, fault)
+		return faultySchema[[]A](node, fault)
 	}
 
 	return of[[]A](
@@ -62,7 +62,7 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 		Value: value.node,
 	}
 	if fault := Validate(value); fault != nil {
-		return faultedSchema[map[string]A](node, fault)
+		return faultySchema[map[string]A](node, fault)
 	}
 
 	return of[map[string]A](
@@ -71,7 +71,7 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 			if err := into.BeginObject(); err != nil {
 				return err
 			}
-			for _, key := range sortedKeys(entries) {
+			for _, key := range sortKeys(entries) {
 				if err := into.FieldName(key); err != nil {
 					return err
 				}
@@ -84,11 +84,11 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 		func(from Source) (map[string]A, error) {
 			decoded := make(map[string]A)
 			err := from.ReadObject(func(key string) error {
-				heldValue, err := Decode(value, from)
+				member, err := Decode(value, from)
 				if err != nil {
 					return within(key, err)
 				}
-				decoded[key] = heldValue
+				decoded[key] = member
 				return nil
 			})
 			if err != nil {
@@ -107,7 +107,7 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 // differently, so the schema does too.
 func Nullable[A any](inner Schema[A]) Schema[*A] {
 	if fault := Validate(inner); fault != nil {
-		return faultedSchema[*A](inner.node, fault)
+		return faultySchema[*A](inner.node, fault)
 	}
 
 	return of[*A](
@@ -135,9 +135,9 @@ func Nullable[A any](inner Schema[A]) Schema[*A] {
 	)
 }
 
-// sortedKeys orders a map's keys so encoding is deterministic. Go randomises map
+// sortKeys orders a map's keys so encoding is deterministic. Go randomises map
 // iteration deliberately, and a document that changes shape between runs cannot
 // be compared in a test or cached by an intermediary.
-func sortedKeys[A any](entries map[string]A) []string {
+func sortKeys[A any](entries map[string]A) []string {
 	return slices.Sorted(maps.Keys(entries))
 }

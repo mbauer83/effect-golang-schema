@@ -66,24 +66,24 @@ type shape struct {
 }
 
 func (projection *projector) shape(node structure.Node) (shape, error) {
-	switch heldValue := node.(type) {
+	switch concrete := node.(type) {
 	case structure.Scalar:
-		return projection.scalar(heldValue)
+		return projection.scalar(concrete)
 	case structure.Object:
-		name, err := projection.message(heldValue)
+		name, err := projection.message(concrete)
 		return shape{name: name}, err
 	case structure.Union:
-		name, err := projection.oneOf(heldValue)
+		name, err := projection.oneOf(concrete)
 		return shape{name: name}, err
 	case structure.Reference:
-		name, err := projection.reference(heldValue)
+		name, err := projection.reference(concrete)
 		return shape{name: name}, err
 	case structure.Sequence:
-		return projection.sequence(heldValue)
+		return projection.sequence(concrete)
 	case structure.Mapping:
-		return projection.projectMapping(heldValue)
+		return projection.mapping(concrete)
 	case structure.Nullable:
-		inner, err := projection.shape(heldValue.Inner)
+		inner, err := projection.shape(concrete.Inner)
 		inner.nullable = true
 		return inner, err
 	default:
@@ -109,7 +109,7 @@ func (projection *projector) sequence(sequence structure.Sequence) (shape, error
 	}, nil
 }
 
-func (projection *projector) projectMapping(mapping structure.Mapping) (shape, error) {
+func (projection *projector) mapping(mapping structure.Mapping) (shape, error) {
 	key, isScalar := mapping.Key.(structure.Scalar)
 	if !isScalar || key.Kind != structure.Text {
 		// proto3 permits an integral or string key and nothing else. The
@@ -133,7 +133,7 @@ func (projection *projector) projectMapping(mapping structure.Mapping) (shape, e
 var (
 	errUnnumbered = errors.New(
 		"protobuf identifies a field by its number, and this one has none: number it " +
-			"with Numbered, because a number taken from declaration order would " +
+			"with WithNumber, because a number taken from declaration order would " +
 			"change when the declaration was reordered")
 	errRepeatedVariant = errors.New(
 		"a oneof member cannot be repeated in proto3, because the presence of a " +

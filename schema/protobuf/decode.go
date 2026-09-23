@@ -41,14 +41,14 @@ func read(node structure.Node, bytes []byte) (dynamic.Value, error) {
 type occurrence struct {
 	kind  wireType
 	bytes []byte
-	fixed uint64
+	bits  uint64
 }
 
 // readOccurrences reads the message into its fields' occurrences, in the order they
 // appeared, skipping the numbers the description does not know.
 func readOccurrences(known map[int]bool, bytes []byte) (map[int][]occurrence, error) {
 	from := &reader{bytes: bytes}
-	found := map[int][]occurrence{}
+	occurrences := map[int][]occurrence{}
 	for !from.done() {
 		number, kind, err := from.tag()
 		if err != nil {
@@ -64,23 +64,23 @@ func readOccurrences(known map[int]bool, bytes []byte) (map[int][]occurrence, er
 		if err != nil {
 			return nil, fmt.Errorf("field %d: %w", number, err)
 		}
-		found[number] = append(found[number], appearance)
+		occurrences[number] = append(occurrences[number], appearance)
 	}
-	return found, nil
+	return occurrences, nil
 }
 
 func readOccurrence(from *reader, kind wireType) (occurrence, error) {
 	switch kind {
-	case varying:
+	case wireVarint:
 		value, err := from.varint()
-		return occurrence{kind: kind, fixed: value}, err
-	case eightBytes:
+		return occurrence{kind: kind, bits: value}, err
+	case wireI64:
 		value, err := from.fixed64()
-		return occurrence{kind: kind, fixed: value}, err
-	case fourBytes:
+		return occurrence{kind: kind, bits: value}, err
+	case wireI32:
 		value, err := from.fixed32()
-		return occurrence{kind: kind, fixed: uint64(value)}, err
-	case counted:
+		return occurrence{kind: kind, bits: uint64(value)}, err
+	case wireLen:
 		block, err := from.block()
 		return occurrence{kind: kind, bytes: block}, err
 	default:
@@ -96,7 +96,7 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 		}
 		known[member.Number] = true
 	}
-	found, err := readOccurrences(known, bytes)
+	occurrences, err := readOccurrences(known, bytes)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", object.Name, err)
 	}
@@ -104,18 +104,18 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 	// In the order the description declares them, not the order the wire
 	// carried them: the representation's objects are ordered, and a reader that
 	// forwarded what it received should send the same thing twice.
-	makeed := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
+	result := dynamic.Object{Fields: make([]dynamic.Field, 0, len(object.Fields))}
 	for _, member := range object.Fields {
-		value, present, err := readMember(member, found[member.Number])
+		value, present, err := readMember(member, occurrences[member.Number])
 		if err != nil {
 			return nil, fmt.Errorf("field %q of %s: %w", member.Name, object.Name, err)
 		}
 		if !present {
 			continue
 		}
-		makeed.Fields = append(makeed.Fields, dynamic.Field{Name: member.Name, Value: value})
+		result.Fields = append(result.Fields, dynamic.Field{Name: member.Name, Value: value})
 	}
-	return makeed, nil
+	return result, nil
 }
 
 // readMember is the value a field's occurrences are, and whether it was there.
@@ -130,21 +130,21 @@ func readObject(object structure.Object, bytes []byte) (dynamic.Value, error) {
 // The description's own rules then apply to whatever resulted, which is where a
 // zero gets refused: a count of at least one rejects the zero the wire implied
 // exactly as it would reject one the wire spelled out.
-func readMember(member structure.Field, found []occurrence) (dynamic.Value, bool, error) {
+func readMember(member structure.Field, occurrences []occurrence) (dynamic.Value, bool, error) {
 	switch shape := member.Node.(type) {
 	case structure.Sequence:
-		return readRepeated(shape, found)
+		return readRepeated(shape, occurrences)
 	case structure.Mapping:
-		return readEntries(shape, found)
+		return readEntries(shape, occurrences)
 	case structure.Nullable:
 		// A nullable field has explicit presence, so an absent one stays
 		// absent rather than becoming its kind's zero.
 		return readMember(structure.Field{
 			Name: member.Name, Node: shape.Inner, Number: member.Number,
 			Optional: true,
-		}, found)
+		}, occurrences)
 	default:
-		if len(found) == 0 {
+		if len(occurrences) == 0 {
 			if member.Optional {
 				return nil, false, nil
 			}
@@ -153,7 +153,7 @@ func readMember(member structure.Field, found []occurrence) (dynamic.Value, bool
 		}
 		// The last one wins, which is what protobuf says of a repeated
 		// appearance of a non-repeated field.
-		value, err := readSingle(member.Node, found[len(found)-1])
+		value, err := readSingle(member.Node, occurrences[len(occurrences)-1])
 		return value, err == nil, err
 	}
 }
@@ -163,7 +163,7 @@ func readSingle(node structure.Node, appearance occurrence) (dynamic.Value, erro
 	case structure.Scalar:
 		return readScalar(shape, appearance)
 	case structure.Object, structure.Union, structure.Reference:
-		if appearance.kind != counted {
+		if appearance.kind != wireLen {
 			return nil, fmt.Errorf("a message is length-delimited, and this field is wire type %d",
 				appearance.kind)
 		}

@@ -34,7 +34,7 @@ func TestTheMarksDoNotSurviveIntoTheDerivedShape(t *testing.T) {
 	// dropped -- so checking only the root proves nothing. The line's kept
 	// identity is where a surviving mark would show, and a projection reading
 	// it would make a key out of a field that is no longer one.
-	lines := fieldNamed(t, created, "lines")
+	lines := fieldByName(t, created, "lines")
 	element := lines.Node.(structure.Sequence).Element.(structure.Object)
 	for _, field := range element.Fields {
 		if field.Identity || field.Computed {
@@ -46,7 +46,7 @@ func TestTheMarksDoNotSurviveIntoTheDerivedShape(t *testing.T) {
 	}
 }
 
-func fieldNamed(t *testing.T, node structure.Node, name string) structure.Field {
+func fieldByName(t *testing.T, node structure.Node, name string) structure.Field {
 	t.Helper()
 	object, isObject := node.(structure.Object)
 	if !isObject {
@@ -67,8 +67,8 @@ func TestTheDescriptionCarriesWhichDefaultWasDeclared(t *testing.T) {
 	// string would be one dialect's spelling inside a description meant to
 	// outlive the choice of dialect.
 	stamped := schema.Struct[dynamic.Value]("Stamped",
-		schema.DescribedField("at", schema.Time()).Computed().DefaultingToNow(),
-		schema.DescribedField("status", schema.Text()).Defaulting(dynamic.OfText("new")),
+		schema.DynamicField("at", schema.Time()).Computed().WithDefaultNow(),
+		schema.DynamicField("status", schema.Text()).WithDefault(dynamic.OfText("new")),
 	)
 	object := stamped.Structure().(structure.Object)
 
@@ -77,7 +77,7 @@ func TestTheDescriptionCarriesWhichDefaultWasDeclared(t *testing.T) {
 		t.Errorf("expected the moment the row is written, got %#v", at.Default)
 	}
 	status := object.Fields[1]
-	held, fixed := status.Default.(structure.DefaultTo)
+	held, fixed := status.Default.(structure.DefaultValue)
 	if !fixed {
 		t.Fatalf("expected a fixed value, got %#v", status.Default)
 	}
@@ -95,7 +95,7 @@ func TestTheDescriptionCarriesWhichDefaultWasDeclared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := named(t, created); len(got) != 1 || got[0] != "status" {
+	if got := fieldNames(t, created); len(got) != 1 || got[0] != "status" {
 		t.Fatalf("unexpected fields: %v", got)
 	}
 }

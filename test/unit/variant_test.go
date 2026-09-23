@@ -19,31 +19,31 @@ import (
 // address is a value object: it belongs to whatever holds it and has no
 // identity, so it lives in the order's own row and appears in every shape.
 var address = schema.Struct[dynamic.Value]("Address",
-	schema.DescribedField("street", schema.Text()),
-	schema.DescribedField("city", schema.Text()),
+	schema.DynamicField("street", schema.Text()),
+	schema.DynamicField("city", schema.Text()),
 )
 
 // orderLine is an entity: it has an identity, so it is a thing rather than a
 // part -- and its own computed field has to be left out of its own shape.
 var orderLine = schema.Struct[dynamic.Value]("OrderLine",
-	schema.DescribedField("id", schema.UUID()).Identity(),
-	schema.DescribedField("sku", schema.Text()),
-	schema.DescribedField("quantity", schema.Int32().Constrained(schema.AtLeast[int32](1))),
-	schema.DescribedField("lineTotal", schema.Int64()).Computed().Defaulting(dynamic.OfInteger(0)),
+	schema.DynamicField("id", schema.UUID()).Identity(),
+	schema.DynamicField("sku", schema.Text()),
+	schema.DynamicField("quantity", schema.Int32().Check(schema.AtLeast[int32](1))),
+	schema.DynamicField("lineTotal", schema.Int64()).Computed().WithDefault(dynamic.OfInteger(0)),
 )
 
 var order = schema.Struct[dynamic.Value]("Order",
 	// The database generates it, so it is both: an identity, and not the
 	// caller's to give.
-	schema.DescribedField("id", schema.Int64()).Identity().Computed(),
-	schema.DescribedField("reference", schema.UUID()),
-	schema.DescribedField("shipTo", address),
-	schema.DescribedField("lines", schema.List(orderLine)),
-	schema.DescribedField("placedAt", schema.Time()).Computed().DefaultingToNow(),
+	schema.DynamicField("id", schema.Int64()).Identity().Computed(),
+	schema.DynamicField("reference", schema.UUID()),
+	schema.DynamicField("shipTo", address),
+	schema.DynamicField("lines", schema.List(orderLine)),
+	schema.DynamicField("placedAt", schema.Time()).Computed().WithDefaultNow(),
 )
 
-// named is the field names of a derived object, in order.
-func named(t *testing.T, node structure.Node) []string {
+// fieldNames is the field names of a derived object, in order.
+func fieldNames(t *testing.T, node structure.Node) []string {
 	t.Helper()
 	object, isObject := node.(structure.Object)
 	if !isObject {
@@ -64,13 +64,13 @@ func TestTheCreateShapeLeavesOutWhatTheCallerCannotSupply(t *testing.T) {
 
 	// No id: the database generates it. No placedAt: computed. No lines: they
 	// have identities of their own, so creating one is its own act.
-	if got := named(t, created); len(got) != 2 || got[0] != "reference" || got[1] != "shipTo" {
+	if got := fieldNames(t, created); len(got) != 2 || got[0] != "reference" || got[1] != "shipTo" {
 		t.Fatalf("unexpected fields: %v", got)
 	}
 	// The value object stays and stays whole, because it has no identity and
 	// so is part of the order rather than a thing beside it.
-	shipTo := fieldNamed(t, created, "shipTo")
-	if got := named(t, shipTo.Node); len(got) != 2 {
+	shipTo := fieldByName(t, created, "shipTo")
+	if got := fieldNames(t, shipTo.Node); len(got) != 2 {
 		t.Fatalf("expected the value object whole, got %v", got)
 	}
 	// And a create shape is not partial: every field it kept is required,
@@ -86,7 +86,7 @@ func TestTheUpdateShapeLeavesOutTheIdentityAndAsksForNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := named(t, updated); len(got) != 2 || got[0] != "reference" {
+	if got := fieldNames(t, updated); len(got) != 2 || got[0] != "reference" {
 		t.Fatalf("unexpected fields: %v", got)
 	}
 	// Every field optional: a change says what is changing, and a field nobody
@@ -108,7 +108,7 @@ func TestTheUpdateShapeLeavesOutTheIdentityAndAsksForNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range named(t, line) {
+	for _, name := range fieldNames(t, line) {
 		if name == "id" {
 			t.Error("expected an application-generated identity left out of an update shape")
 		}
@@ -117,7 +117,7 @@ func TestTheUpdateShapeLeavesOutTheIdentityAndAsksForNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := named(t, created); len(got) == 0 || got[0] != "id" {
+	if got := fieldNames(t, created); len(got) == 0 || got[0] != "id" {
 		t.Errorf("expected the same identity kept in a create shape, got %v", got)
 	}
 }
@@ -131,10 +131,10 @@ func TestReachingIntoTheEntitiesDerivesThemTheSameWay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := named(t, created); len(got) != 3 || got[2] != "lines" {
+	if got := fieldNames(t, created); len(got) != 3 || got[2] != "lines" {
 		t.Fatalf("unexpected fields: %v", got)
 	}
-	lines := fieldNamed(t, created, "lines")
+	lines := fieldByName(t, created, "lines")
 	// The list survives, because how many there are is not something a
 	// derivation has any business changing.
 	sequence, isList := lines.Node.(structure.Sequence)
@@ -143,10 +143,10 @@ func TestReachingIntoTheEntitiesDerivesThemTheSameWay(t *testing.T) {
 	}
 	// The line keeps its own identity, because a line created with its parent
 	// is still the caller's to name -- and loses its computed total.
-	if got := named(t, sequence.Element); len(got) != 3 || got[0] != "id" {
+	if got := fieldNames(t, sequence.Element); len(got) != 3 || got[0] != "id" {
 		t.Fatalf("unexpected line fields: %v", got)
 	}
-	for _, name := range named(t, sequence.Element) {
+	for _, name := range fieldNames(t, sequence.Element) {
 		if name == "lineTotal" {
 			t.Error("expected the line's computed field left out")
 		}

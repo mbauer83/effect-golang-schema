@@ -29,7 +29,7 @@ func Select(node structure.Node) structure.Node {
 // things rather than parts, and creating one is its own act. CreateWithEntities
 // is for the caller that means to create the whole aggregate at once.
 func Create(node structure.Node) (structure.Node, error) {
-	return deriveNode(node, supplied{keepIdentity: true, reachIntoEntities: false})
+	return deriveNode(node, keepPolicy{keepIdentity: true, reachIntoEntities: false})
 }
 
 // CreateWithEntities is Create for an aggregate created in one act: the root and
@@ -39,7 +39,7 @@ func Create(node structure.Node) (structure.Node, error) {
 // requests with different shapes, and a boolean at the call site would not say
 // which of them was meant.
 func CreateWithEntities(node structure.Node) (structure.Node, error) {
-	return deriveNode(node, supplied{keepIdentity: true, reachIntoEntities: true})
+	return deriveNode(node, keepPolicy{keepIdentity: true, reachIntoEntities: true})
 }
 
 // Update is what a caller supplies to change one.
@@ -54,16 +54,16 @@ func CreateWithEntities(node structure.Node) (structure.Node, error) {
 // the difference between an update shape and a create shape with the identity
 // removed, and it is why this is not that.
 func Update(node structure.Node) (structure.Node, error) {
-	return deriveNode(node, supplied{keepIdentity: false, reachIntoEntities: false, partial: true})
+	return deriveNode(node, keepPolicy{keepIdentity: false, reachIntoEntities: false, partial: true})
 }
 
 // UpdateWithEntities is Update reaching into the entities beneath the root.
 func UpdateWithEntities(node structure.Node) (structure.Node, error) {
-	return deriveNode(node, supplied{keepIdentity: false, reachIntoEntities: true, partial: true})
+	return deriveNode(node, keepPolicy{keepIdentity: false, reachIntoEntities: true, partial: true})
 }
 
-// supplied says which fields a derived shape keeps.
-type supplied struct {
+// keepPolicy says which fields a derived shape keeps.
+type keepPolicy struct {
 	keepIdentity      bool
 	reachIntoEntities bool
 	partial           bool
