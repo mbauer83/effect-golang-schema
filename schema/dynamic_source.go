@@ -14,24 +14,24 @@ import (
 
 // dynamicSource reads a value as a schema pulls it.
 //
-// queue is a stack rather than a cursor because the schema drives: it asks
-// for one value at a time, and a container hands its members over to be asked
-// about in turn.
+// stack holds what is still to be read, rather than a cursor, because the
+// schema drives: it asks for one value at a time, and a container hands its
+// members over to be asked about in turn.
 type dynamicSource struct {
-	queue []dynamic.Value
+	stack []dynamic.Value
 }
 
 func (source *dynamicSource) take() (dynamic.Value, error) {
-	if len(source.queue) == 0 {
+	if len(source.stack) == 0 {
 		return nil, fail("the value ended early", nil)
 	}
-	value := source.queue[len(source.queue)-1]
-	source.queue = source.queue[:len(source.queue)-1]
+	value := source.stack[len(source.stack)-1]
+	source.stack = source.stack[:len(source.stack)-1]
 	return value, nil
 }
 
 func (source *dynamicSource) push(value dynamic.Value) {
-	source.queue = append(source.queue, value)
+	source.stack = append(source.stack, value)
 }
 
 // Text accepts a byte string as well as text, on dynamic.TextOf's terms: which
@@ -114,10 +114,10 @@ func (source *dynamicSource) Timestamp() (time.Time, error) {
 // Null consumes the value only when it is one, because asking is not the same
 // as reading and a present value must still be there afterwards.
 func (source *dynamicSource) Null() (bool, error) {
-	if len(source.queue) == 0 {
+	if len(source.stack) == 0 {
 		return false, fail("the value ended early", nil)
 	}
-	if _, absent := source.queue[len(source.queue)-1].(dynamic.Absent); !absent {
+	if _, absent := source.stack[len(source.stack)-1].(dynamic.Absent); !absent {
 		return false, nil
 	}
 	_, err := source.take()

@@ -30,7 +30,7 @@ func FromDynamic[A any](shape Schema[A], value dynamic.Value) (A, error) {
 		var zero A
 		return zero, fail("is missing", nil)
 	}
-	return Decode(shape, &dynamicSource{queue: []dynamic.Value{value}})
+	return Decode(shape, &dynamicSource{stack: []dynamic.Value{value}})
 }
 
 // dynamicSink builds a value as a schema writes it.

@@ -119,7 +119,7 @@ func TestARejectedDocumentNamesTheStageAndTheField(t *testing.T) {
 	if !isTypedFailure {
 		t.Fatalf("expected a typed failure rather than a defect, got %+v", cause)
 	}
-	if failure.Stage != "decoding the catalogue" {
+	if failure.Stage != "decode the catalogue" {
 		t.Fatalf("expected the stage named, got %#v", failure)
 	}
 	// The typed failure is one type at the boundary and still carries the

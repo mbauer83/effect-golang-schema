@@ -56,13 +56,13 @@ func validate() catalogEffect[effect.Unit] {
 
 func read(io effect.IOOperations[effect.Unit], path string) catalogEffect[[]byte] {
 	return io.ReadFile(path).
-		MapError(faultFor[effect.IOError]("reading the catalogue")).
+		MapError(faultFor[effect.IOError]("read the catalogue")).
 		WithName("read-catalogue")
 }
 
 func write(io effect.IOOperations[effect.Unit], path string, document []byte) catalogEffect[effect.Unit] {
 	return io.WriteFile(path, document, fs.FileMode(0o600)).
-		MapError(faultFor[effect.IOError]("writing " + path)).
+		MapError(faultFor[effect.IOError]("write " + path)).
 		WithName("write-document")
 }
 
@@ -74,7 +74,7 @@ func decode(document []byte) catalogEffect[Catalog] {
 		func(context.Context, effect.Unit) (Catalog, error) {
 			return schema.DecodeJSON(Schema, document)
 		},
-		faultFor[error]("decoding the catalogue"),
+		faultFor[error]("decode the catalogue"),
 	).WithName("decode-catalogue")
 }
 

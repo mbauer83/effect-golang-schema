@@ -160,7 +160,7 @@ func decodeTagged[A any](
 	// The name is the union's, not the variant's, so the variant reads the
 	// object it would have written: its own fields and nothing else.
 	value, err := variant.decode(&dynamicSource{
-		queue: []dynamic.Value{omit(object, discriminator)},
+		stack: []dynamic.Value{omit(object, discriminator)},
 	})
 	if err != nil {
 		return zero, within(tag, err)

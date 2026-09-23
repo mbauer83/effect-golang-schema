@@ -27,13 +27,13 @@ func (source *jsonSource) Buffer() (dynamic.Value, error) {
 		return source.bufferList()
 	case 'n':
 		if _, err := source.decoder.ReadToken(); err != nil {
-			return nil, readFailure("reading a null", err)
+			return nil, readFailure("read a null", err)
 		}
 		return dynamic.Absent{}, nil
 	case '"', '0', 't', 'f':
 		return source.bufferScalar(kind)
 	default:
-		return nil, readFailure("reading a value", errUnreadableValue)
+		return nil, readFailure("read a value", errUnreadableValue)
 	}
 }
 
@@ -55,13 +55,13 @@ func bufferNumber(token jsontext.Token) (dynamic.Value, error) {
 
 func (source *jsonSource) bufferObject() (dynamic.Value, error) {
 	if _, err := source.decoder.ReadToken(); err != nil {
-		return nil, readFailure("reading an object", err)
+		return nil, readFailure("read an object", err)
 	}
 	object := dynamic.Object{}
 	for source.decoder.PeekKind() == '"' {
 		token, err := source.decoder.ReadToken()
 		if err != nil {
-			return nil, readFailure("reading a field name", err)
+			return nil, readFailure("read a field name", err)
 		}
 		// The name is taken out of the token before anything else is read: a
 		// token is only good until the next call to the decoder.
@@ -73,14 +73,14 @@ func (source *jsonSource) bufferObject() (dynamic.Value, error) {
 		object.Fields = append(object.Fields, dynamic.Field{Name: name, Value: value})
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
-		return nil, readFailure("reading the end of an object", err)
+		return nil, readFailure("read the end of an object", err)
 	}
 	return object, nil
 }
 
 func (source *jsonSource) bufferList() (dynamic.Value, error) {
 	if _, err := source.decoder.ReadToken(); err != nil {
-		return nil, readFailure("reading a list", err)
+		return nil, readFailure("read a list", err)
 	}
 	list := dynamic.List{Elements: []dynamic.Value{}}
 	for source.decoder.PeekKind() != ']' {
@@ -91,7 +91,7 @@ func (source *jsonSource) bufferList() (dynamic.Value, error) {
 		list.Elements = append(list.Elements, value)
 	}
 	if _, err := source.decoder.ReadToken(); err != nil {
-		return nil, readFailure("reading the end of a list", err)
+		return nil, readFailure("read the end of a list", err)
 	}
 	return list, nil
 }
@@ -103,7 +103,7 @@ func (source *jsonSource) bufferList() (dynamic.Value, error) {
 func (source *jsonSource) bufferScalar(kind jsontext.Kind) (dynamic.Value, error) {
 	token, err := source.decoder.ReadToken()
 	if err != nil {
-		return nil, readFailure("reading "+describeKind(kind), err)
+		return nil, readFailure("read "+describeKind(kind), err)
 	}
 	switch kind {
 	case '"':
