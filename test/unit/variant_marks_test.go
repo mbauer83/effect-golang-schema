@@ -16,7 +16,7 @@ func TestTheMarksDoNotSurviveIntoTheDerivedShape(t *testing.T) {
 	// computed left in it, so carrying the marks through would say something
 	// untrue about it -- and a projection reading them would make a key out of
 	// a field that is no longer one.
-	created, err := variant.CreateWithEntities(order.Structure())
+	created, err := variant.InsertWithEntities(order.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestTheDescriptionCarriesWhichDefaultWasDeclared(t *testing.T) {
 		t.Error("Defaulting should not have made the field computed")
 	}
 	// So it survives a create shape, where the computed one does not.
-	created, err := variant.Create(stamped.Structure())
+	created, err := variant.Insert(stamped.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,21 +18,21 @@ func writeUnionBinding(out *bytes.Buffer, shape structure.Union) error {
 	}
 	marker := markerName(shape.Name)
 
-	writeDoc(out, shape.Name, shape.Doc)
+	writeDoc(out, shape.Name, shape.Description)
 	fmt.Fprintf(out, "type %s interface{ %s() }\n", shape.Name, marker)
 
 	fmt.Fprintf(out, "\n// %sSchema describes %s. It is generated from its description.\n",
 		shape.Name, shape.Name)
 	fmt.Fprintf(out, "var %sSchema = ", shape.Name)
-	fmt.Fprintf(out, "schema.OneOf[%s](%s,\n", shape.Name, strconv.Quote(shape.Name))
+	fmt.Fprintf(out, "schema.Union[%s](%s,\n", shape.Name, strconv.Quote(shape.Name))
 	for _, variant := range shape.Variants {
 		if err := writeVariant(out, shape.Name, variant); err != nil {
 			return err
 		}
 	}
 	fmt.Fprintf(out, ")")
-	if shape.Doc != "" {
-		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(shape.Doc))
+	if shape.Description != "" {
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(shape.Description))
 	}
 	fmt.Fprintf(out, "\n")
 	return nil
@@ -49,8 +49,8 @@ func writeVariant(out *bytes.Buffer, union string, variant structure.Variant) er
 	fmt.Fprintf(out, "func(value %s) (%s, bool) { variant, is := value.(%s); return variant, is },\n",
 		union, object.Name, object.Name)
 	fmt.Fprintf(out, "func(variant %s) %s { return variant })", object.Name, union)
-	if variant.Doc != "" {
-		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(variant.Doc))
+	if variant.Description != "" {
+		fmt.Fprintf(out, ".WithDescription(%s)", strconv.Quote(variant.Description))
 	}
 	fmt.Fprintf(out, ",\n")
 	return nil

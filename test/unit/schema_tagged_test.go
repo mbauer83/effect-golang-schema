@@ -38,7 +38,7 @@ var iso10800Schema = schema.Struct[ISO10800]("ISO10800",
 		func(value *ISO10800, class int) { value.Class = class }),
 )
 
-var toleranceSchema = schema.OneOfBy[Tolerance]("Tolerance", "type",
+var toleranceSchema = schema.TaggedUnion[Tolerance]("Tolerance", "type",
 	schema.VariantOf("iso2768", iso2768Schema,
 		func(value Tolerance) (ISO2768, bool) { held, is := value.(ISO2768); return held, is },
 		func(held ISO2768) Tolerance { return held }),
@@ -126,11 +126,11 @@ func TestTaggedUnionDeclarationMistakesAreReported(t *testing.T) {
 		func(held Circle) Shape { return held })
 
 	cases := map[string]schema.Schema[Shape]{
-		"no naming field": schema.OneOfBy[Shape]("Shape", "", circle),
+		"no naming field": schema.TaggedUnion[Shape]("Shape", "", circle),
 		// A variant that already has the field would have two of them, and
 		// which one won is not something to leave to chance.
-		"a variant that already has the field": schema.OneOfBy[Shape]("Shape", "radius", circle),
-		"no variants":                          schema.OneOfBy[Shape]("Shape", "type"),
+		"a variant that already has the field": schema.TaggedUnion[Shape]("Shape", "radius", circle),
+		"no variants":                          schema.TaggedUnion[Shape]("Shape", "type"),
 	}
 	for mistake, declared := range cases {
 		if err := schema.Validate(declared); err == nil {

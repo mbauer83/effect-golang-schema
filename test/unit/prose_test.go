@@ -26,12 +26,12 @@ func TestProseOnAFieldReachesTheDescription(t *testing.T) {
 	if !isObject {
 		t.Fatalf("expected an object, got %#v", documented.Structure())
 	}
-	if object.Doc != "one note" {
-		t.Fatalf("expected the object's prose, got %q", object.Doc)
+	if object.Description != "one note" {
+		t.Fatalf("expected the object's prose, got %q", object.Description)
 	}
 	var field structure.Field = object.Fields[0]
-	if field.Doc != "what the note says" {
-		t.Fatalf("expected the field's prose, got %q", field.Doc)
+	if field.Description != "what the note says" {
+		t.Fatalf("expected the field's prose, got %q", field.Description)
 	}
 }
 
@@ -40,12 +40,12 @@ func TestProseOnAUnionAndItsVariantsReachesTheDescription(t *testing.T) {
 	if !isUnion {
 		t.Fatalf("expected a union, got %#v", shapeSchema.Structure())
 	}
-	if union.Doc != "a shape" {
-		t.Fatalf("expected the union's prose, got %q", union.Doc)
+	if union.Description != "a shape" {
+		t.Fatalf("expected the union's prose, got %q", union.Description)
 	}
 	var variant structure.Variant = union.Variants[0]
-	if variant.Doc != "a circle, by its radius" {
-		t.Fatalf("expected the variant's prose, got %q", variant.Doc)
+	if variant.Description != "a circle, by its radius" {
+		t.Fatalf("expected the variant's prose, got %q", variant.Description)
 	}
 }
 

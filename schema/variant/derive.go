@@ -17,7 +17,7 @@ func Select(node structure.Node) structure.Node {
 	return node
 }
 
-// Create is what a caller supplies to make one.
+// Insert is what a caller supplies to make one.
 //
 // Every field except the computed ones: a value the database generates or a
 // trigger overwrites is not the caller's to give, and asking for it would be
@@ -28,17 +28,17 @@ func Select(node structure.Node) structure.Node {
 // Nested entities are left out. They have identities of their own, so they are
 // things rather than parts, and creating one is its own act. CreateWithEntities
 // is for the caller that means to create the whole aggregate at once.
-func Create(node structure.Node) (structure.Node, error) {
+func Insert(node structure.Node) (structure.Node, error) {
 	return deriveNode(node, keepPolicy{keepIdentity: true, reachIntoEntities: false})
 }
 
-// CreateWithEntities is Create for an aggregate created in one act: the root and
+// InsertWithEntities is Create for an aggregate created in one act: the root and
 // the entities beneath it together.
 //
 // It is a separate function rather than a flag because the two are different
 // requests with different shapes, and a boolean at the call site would not say
 // which of them was meant.
-func CreateWithEntities(node structure.Node) (structure.Node, error) {
+func InsertWithEntities(node structure.Node) (structure.Node, error) {
 	return deriveNode(node, keepPolicy{keepIdentity: true, reachIntoEntities: true})
 }
 

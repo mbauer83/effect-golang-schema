@@ -37,7 +37,7 @@ func deriveNode(node structure.Node, policy keepPolicy) (structure.Node, error) 
 		return nil, fmt.Errorf("%s: %w", object.Name, ErrNothingLeft)
 	}
 
-	return structure.Object{Name: object.Name, Doc: object.Doc, Fields: fields}, nil
+	return structure.Object{Name: object.Name, Description: object.Description, Fields: fields}, nil
 }
 
 // deriveField decides one field's fate, and what it looks like if it survives.

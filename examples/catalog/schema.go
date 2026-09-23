@@ -14,7 +14,7 @@ var Schema = CatalogSchema
 //
 // A union is written by hand: which Go types are the alternatives, and how to
 // narrow to each, is not in the interface's declaration.
-var AvailabilitySchema = schema.OneOf[Availability]("Availability",
+var AvailabilitySchema = schema.Union[Availability]("Availability",
 	schema.VariantOf("inStock", InStockSchema,
 		func(availability Availability) (InStock, bool) {
 			stock, is := availability.(InStock)

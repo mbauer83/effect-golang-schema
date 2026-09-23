@@ -36,7 +36,7 @@ var item = schema.Struct[dynamic.Value]("Item",
 ).WithDescription("one stocked line")
 
 // movement is a change in what is stocked.
-var movement = schema.OneOf[dynamic.Value]("Movement",
+var movement = schema.Union[dynamic.Value]("Movement",
 	schema.DynamicVariant("received", schema.Struct[dynamic.Value]("Received",
 		schema.DynamicField("count", schema.Uint16()),
 	)).WithDescription("stock arriving"),

@@ -17,7 +17,7 @@ import (
 
 // shipped is a union with no Go type, so a oneof is exercised without a second
 // Go hierarchy to declare.
-var shipped = schema.OneOf[dynamic.Value]("Shipped",
+var shipped = schema.Union[dynamic.Value]("Shipped",
 	schema.DynamicVariant("byRoad", schema.Struct[dynamic.Value]("ByRoad",
 		schema.DynamicField("plate", schema.Text()).WithNumber(1))).WithNumber(1),
 	schema.DynamicVariant("byRail", schema.Struct[dynamic.Value]("ByRail",

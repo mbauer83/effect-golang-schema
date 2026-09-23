@@ -57,7 +57,7 @@ func fieldNames(t *testing.T, node structure.Node) []string {
 }
 
 func TestTheCreateShapeLeavesOutWhatTheCallerCannotSupply(t *testing.T) {
-	created, err := variant.Create(order.Structure())
+	created, err := variant.Insert(order.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestTheUpdateShapeLeavesOutTheIdentityAndAsksForNothing(t *testing.T) {
 			t.Error("expected an application-generated identity left out of an update shape")
 		}
 	}
-	created, err := variant.Create(orderLine.Structure())
+	created, err := variant.Insert(orderLine.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestReachingIntoTheEntitiesDerivesThemTheSameWay(t *testing.T) {
 	// An aggregate created in one act. The lines come along, and each line's
 	// own computed field is left out of the line -- the rule applies at every
 	// depth rather than only at the root.
-	created, err := variant.CreateWithEntities(order.Structure())
+	created, err := variant.InsertWithEntities(order.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestReachingIntoTheEntitiesDerivesThemTheSameWay(t *testing.T) {
 func TestADerivedShapeStillValidatesAndStillProjects(t *testing.T) {
 	// The reason to derive in the description rather than in the type system:
 	// what comes out is a description, so everything that reads one reads this.
-	created, err := variant.Create(order.Structure())
+	created, err := variant.Insert(order.Structure())
 	if err != nil {
 		t.Fatal(err)
 	}

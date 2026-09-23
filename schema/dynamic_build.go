@@ -36,26 +36,26 @@ func dynamicScalar(shape structure.Scalar) Schema[dynamic.Value] {
 func dynamicObject(shape structure.Object) Schema[dynamic.Value] {
 	fields := make([]Field[dynamic.Value], 0, len(shape.Fields))
 	for _, member := range shape.Fields {
-		field := DynamicField(member.Name, Dynamic(member.Node)).WithDescription(member.Doc)
+		field := DynamicField(member.Name, Dynamic(member.Node)).WithDescription(member.Description)
 		if member.Optional {
 			field = field.Optional()
 		}
 		fields = append(fields, field)
 	}
-	return Struct[dynamic.Value](shape.Name, fields...).WithDescription(shape.Doc)
+	return Struct[dynamic.Value](shape.Name, fields...).WithDescription(shape.Description)
 }
 
 func dynamicUnion(shape structure.Union) Schema[dynamic.Value] {
 	variants := make([]Variant[dynamic.Value], 0, len(shape.Variants))
 	for _, alternative := range shape.Variants {
 		variants = append(variants,
-			DynamicVariant(alternative.Name, Dynamic(alternative.Node)).WithDescription(alternative.Doc))
+			DynamicVariant(alternative.Name, Dynamic(alternative.Node)).WithDescription(alternative.Description))
 	}
 	if shape.Discriminator != "" {
-		return OneOfBy[dynamic.Value](shape.Name, shape.Discriminator, variants...).
-			WithDescription(shape.Doc)
+		return TaggedUnion[dynamic.Value](shape.Name, shape.Discriminator, variants...).
+			WithDescription(shape.Description)
 	}
-	return OneOf[dynamic.Value](shape.Name, variants...).WithDescription(shape.Doc)
+	return Union[dynamic.Value](shape.Name, variants...).WithDescription(shape.Description)
 }
 
 func dynamicSequence(shape structure.Sequence) Schema[dynamic.Value] {

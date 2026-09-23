@@ -75,7 +75,7 @@ func (variant Variant[A]) WithNumber(number int) Variant[A] {
 	return variant
 }
 
-// OneOf describes A as a choice between named variants.
+// Union describes A as a choice between named variants.
 //
 // The wire form names the variant as the single member of an object:
 //
@@ -91,7 +91,7 @@ func (variant Variant[A]) WithNumber(number int) Variant[A] {
 //
 // Variants are tried in declared order, so a narrower variant belongs before a
 // wider one that would also match.
-func OneOf[A any](name string, variants ...Variant[A]) Schema[A] {
+func Union[A any](name string, variants ...Variant[A]) Schema[A] {
 	node := structure.Union{Name: name, Variants: describeVariants(variants)}
 	if fault := firstVariantFault(variants); fault != nil {
 		return faultySchema[A](node, fault)
@@ -116,10 +116,10 @@ func describeVariants[A any](variants []Variant[A]) []structure.Variant {
 	descriptions := make([]structure.Variant, 0, len(variants))
 	for _, variant := range variants {
 		descriptions = append(descriptions, structure.Variant{
-			Name:   variant.name,
-			Doc:    variant.doc,
-			Node:   variant.node,
-			Number: variant.number,
+			Name:        variant.name,
+			Description: variant.doc,
+			Node:        variant.node,
+			Number:      variant.number,
 		})
 	}
 	return descriptions

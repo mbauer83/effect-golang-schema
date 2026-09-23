@@ -14,7 +14,7 @@ import (
 func TestADescriptionWithNothingToDeriveFromSaysSo(t *testing.T) {
 	// Each refusal is a description that cannot have a derived shape, rather
 	// than one whose derived shape happens to be empty.
-	if _, err := variant.Create(schema.Text().Structure()); err == nil {
+	if _, err := variant.Insert(schema.Text().Structure()); err == nil {
 		t.Error("expected a scalar to be refused: it has one shape in every role")
 	}
 
@@ -25,7 +25,7 @@ func TestADescriptionWithNothingToDeriveFromSaysSo(t *testing.T) {
 		schema.DynamicField("at", schema.Time()).Computed(),
 		schema.DynamicField("by", schema.Text()).Computed(),
 	)
-	if _, err := variant.Create(allComputed.Structure()); err == nil {
+	if _, err := variant.Insert(allComputed.Structure()); err == nil {
 		t.Error("expected a shape with nothing left to be refused")
 	}
 
@@ -34,13 +34,13 @@ func TestADescriptionWithNothingToDeriveFromSaysSo(t *testing.T) {
 	unresolved := structure.Object{Name: "Holder", Fields: []structure.Field{
 		{Name: "inner", Node: structure.Reference{Name: "Elsewhere"}},
 	}}
-	if _, err := variant.Create(structure.Reference{Name: "Elsewhere"}); err == nil {
+	if _, err := variant.Insert(structure.Reference{Name: "Elsewhere"}); err == nil {
 		t.Error("expected an unresolved reference at the root to be refused")
 	}
 	// Not at a field, though: a reference to a value object is a shape this
 	// walk leaves alone, so only an entity behind an unresolvable name is a
 	// problem -- and this one is not reached into.
-	if _, err := variant.Create(unresolved); err != nil {
+	if _, err := variant.Insert(unresolved); err != nil {
 		t.Errorf("expected a referenced value object to pass through, got %v", err)
 	}
 }

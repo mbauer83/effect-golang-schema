@@ -16,14 +16,14 @@ func describeFields[A any](fields []Field[A]) []structure.Field {
 	descriptions := make([]structure.Field, 0, len(fields))
 	for _, field := range fields {
 		descriptions = append(descriptions, structure.Field{
-			Name:     field.name,
-			Doc:      field.doc,
-			Node:     field.node,
-			Optional: field.optional,
-			Number:   field.number,
-			Identity: field.identity,
-			Computed: field.computed,
-			Default:  field.fallback,
+			Name:        field.name,
+			Description: field.doc,
+			Node:        field.node,
+			Optional:    field.optional,
+			Number:      field.number,
+			Identity:    field.identity,
+			Computed:    field.computed,
+			Default:     field.fallback,
 		})
 	}
 	return descriptions

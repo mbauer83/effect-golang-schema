@@ -133,10 +133,10 @@ func (schema Schema[A]) WithName(name string) Schema[A] {
 func (schema Schema[A]) WithDescription(doc string) Schema[A] {
 	switch shape := schema.node.(type) {
 	case structure.Object:
-		shape.Doc = doc
+		shape.Description = doc
 		return of(shape, schema.encode, schema.decode)
 	case structure.Union:
-		shape.Doc = doc
+		shape.Description = doc
 		return of(shape, schema.encode, schema.decode)
 	default:
 		return schema

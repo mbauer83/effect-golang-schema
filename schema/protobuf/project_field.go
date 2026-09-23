@@ -19,10 +19,10 @@ func (projection *projector) field(member structure.Field) (Field, error) {
 		return Field{}, err
 	}
 	return Field{
-		Name:   member.Name,
-		Doc:    firstParagraph(member.Doc),
-		Number: member.Number,
-		Type:   kind.name,
+		Name:        member.Name,
+		Description: firstParagraph(member.Description),
+		Number:      member.Number,
+		Type:        kind.name,
 		// A repeated field has no explicit presence in proto3, and an empty
 		// list is how it says it has none -- so Optional and Repeated are
 		// never both set, and the description asking for both is the
@@ -49,11 +49,11 @@ func (projection *projector) variant(variant structure.Variant) (Field, error) {
 		return Field{}, errRepeatedVariant
 	}
 	return Field{
-		Name:   variant.Name,
-		Doc:    firstParagraph(variant.Doc),
-		Number: variant.Number,
-		Type:   kind.name,
-		Notes:  kind.notes,
+		Name:        variant.Name,
+		Description: firstParagraph(variant.Description),
+		Number:      variant.Number,
+		Type:        kind.name,
+		Notes:       kind.notes,
 	}, nil
 }
 

@@ -43,11 +43,11 @@ func Project(node structure.Node, packageName string) (Document, error) {
 // Procedure is one procedure to project: its name, its prose, and the
 // descriptions of what it takes and returns.
 type Procedure struct {
-	Service  string
-	Method   string
-	Doc      string
-	Request  structure.Node
-	Response structure.Node
+	Service     string
+	Method      string
+	Description string
+	Request     structure.Node
+	Response    structure.Node
 }
 
 // ProjectServices projects a set of procedures into one proto3 file.
@@ -97,10 +97,10 @@ func (projection *projector) method(procedure Procedure) (Method, error) {
 			procedure.Service, procedure.Method, err)
 	}
 	return Method{
-		Name:     procedure.Method,
-		Doc:      firstParagraph(procedure.Doc),
-		Request:  request,
-		Response: response,
+		Name:        procedure.Method,
+		Description: firstParagraph(procedure.Description),
+		Request:     request,
+		Response:    response,
 	}, nil
 }
 
@@ -148,7 +148,7 @@ func (projection *projector) message(object structure.Object) (string, error) {
 	}
 
 	delete(projection.ancestors, object.Name)
-	projection.declare(Message{Name: object.Name, Doc: object.Doc, Fields: fields})
+	projection.declare(Message{Name: object.Name, Description: object.Description, Fields: fields})
 	return object.Name, nil
 }
 
@@ -179,10 +179,10 @@ func (projection *projector) oneOf(union structure.Union) (string, error) {
 
 	delete(projection.ancestors, union.Name)
 	projection.declare(Message{
-		Name:   union.Name,
-		Doc:    union.Doc,
-		Fields: fields,
-		OneOf:  "value",
+		Name:        union.Name,
+		Description: union.Description,
+		Fields:      fields,
+		OneOf:       "value",
 	})
 	return union.Name, nil
 }

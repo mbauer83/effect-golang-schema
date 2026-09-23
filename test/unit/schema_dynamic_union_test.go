@@ -16,7 +16,7 @@ import (
 
 // shapeDescription is a union with no Go type, whose alternatives are
 // themselves descriptions.
-var shapeDescription = schema.OneOf[dynamic.Value]("Shape",
+var shapeDescription = schema.Union[dynamic.Value]("Shape",
 	schema.DynamicVariant("circle", schema.Struct[dynamic.Value]("Circle",
 		schema.DynamicField("radius", schema.Float64().Check(schema.Above[float64](0))))).
 		WithDescription("a circle, by its radius"),

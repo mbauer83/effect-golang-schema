@@ -61,7 +61,7 @@ func (module *module) object(fields []structure.Field, tag string) (string, erro
 		if field.Optional {
 			value = "Schema.optionalKey(" + value + ")"
 		}
-		members = append(members, docComment(field.Doc, "  ")+"  "+key(field.Name)+": "+value+",")
+		members = append(members, docComment(field.Description, "  ")+"  "+key(field.Name)+": "+value+",")
 	}
 	if len(members) == 0 {
 		return "Schema.Struct({})", nil

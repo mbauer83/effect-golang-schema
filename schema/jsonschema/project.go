@@ -115,11 +115,11 @@ func (projection *projector) object(shape structure.Object) Node {
 }
 
 func (projection *projector) inlineObject(shape structure.Object) Node {
-	schema := Node{Type: "object", Description: shape.Doc}
+	schema := Node{Type: "object", Description: shape.Description}
 	for _, field := range shape.Fields {
 		member := projection.node(field.Node)
-		if field.Doc != "" {
-			member.Description = field.Doc
+		if field.Description != "" {
+			member.Description = field.Description
 		}
 		schema.Properties = append(schema.Properties, Property{Name: field.Name, Schema: member})
 		if !field.Optional {
@@ -134,7 +134,7 @@ func (projection *projector) union(shape structure.Union) Node {
 		if shape.Discriminator != "" {
 			return projection.taggedUnion(shape)
 		}
-		schema := Node{Description: shape.Doc}
+		schema := Node{Description: shape.Description}
 		for _, variant := range shape.Variants {
 			// A union names the chosen variant as the single member of an
 			// object, so an alternative projects as that object rather than as
@@ -143,7 +143,7 @@ func (projection *projector) union(shape structure.Union) Node {
 			// something this module never writes.
 			schema.OneOf = append(schema.OneOf, Node{
 				Type:        "object",
-				Description: variant.Doc,
+				Description: variant.Description,
 				Required:    []string{variant.Name},
 				Properties: []Property{{
 					Name:   variant.Name,
@@ -178,7 +178,7 @@ func (projection *projector) union(shape structure.Union) Node {
 // has nothing to add a property to. The const in each is what validates; the
 // discriminator beside them is an annotation for a reader that understands one.
 func (projection *projector) taggedUnion(shape structure.Union) Node {
-	schema := Node{Description: shape.Doc, Discriminator: shape.Discriminator}
+	schema := Node{Description: shape.Description, Discriminator: shape.Discriminator}
 	for _, variant := range shape.Variants {
 		tag := Node{
 			Type:     "object",
@@ -189,7 +189,7 @@ func (projection *projector) taggedUnion(shape structure.Union) Node {
 			}},
 		}
 		schema.OneOf = append(schema.OneOf, Node{
-			Description: variant.Doc,
+			Description: variant.Description,
 			AllOf:       []Node{projection.node(variant.Node), tag},
 		})
 	}

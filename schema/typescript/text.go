@@ -11,9 +11,9 @@ import (
 func docOf(node structure.Node) string {
 	switch node := node.(type) {
 	case structure.Object:
-		return node.Doc
+		return node.Description
 	case structure.Union:
-		return node.Doc
+		return node.Description
 	}
 	return ""
 }

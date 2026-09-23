@@ -30,9 +30,9 @@ type Document struct {
 
 // Service is one proto3 service: a name, and the procedures it offers.
 type Service struct {
-	Name    string
-	Doc     string
-	Methods []Method
+	Name        string
+	Description string
+	Methods     []Method
 }
 
 // Method is one procedure of a service.
@@ -41,16 +41,16 @@ type Service struct {
 // says. A streaming procedure is a different shape and would need the
 // description to say which side streams.
 type Method struct {
-	Name     string
-	Doc      string
-	Request  string
-	Response string
+	Name        string
+	Description string
+	Request     string
+	Response    string
 }
 
 // Message is one proto3 message.
 type Message struct {
-	Name string
-	Doc  string
+	Name        string
+	Description string
 	// Fields are its members. A message projected from a union has one field
 	// per variant, all inside a oneof.
 	Fields []Field
@@ -62,9 +62,9 @@ type Message struct {
 
 // Field is one member of a message.
 type Field struct {
-	Name   string
-	Doc    string
-	Number int
+	Name        string
+	Description string
+	Number      int
 	// Type is the proto type: a scalar keyword, a message name, or a map type.
 	Type string
 	// Repeated says the field carries many of Type.
@@ -104,10 +104,10 @@ func (document Document) Render() string {
 }
 
 func (service Service) render(out *strings.Builder) {
-	writeComment(out, "", service.Doc)
+	writeComment(out, "", service.Description)
 	out.WriteString("service " + service.Name + " {\n")
 	for _, method := range service.Methods {
-		writeComment(out, "  ", method.Doc)
+		writeComment(out, "  ", method.Description)
 		out.WriteString("  rpc " + method.Name +
 			"(" + method.Request + ") returns (" + method.Response + ");\n")
 	}
@@ -115,7 +115,7 @@ func (service Service) render(out *strings.Builder) {
 }
 
 func (message Message) render(out *strings.Builder) {
-	writeComment(out, "", message.Doc)
+	writeComment(out, "", message.Description)
 	out.WriteString("message " + message.Name + " {\n")
 
 	indent := "  "
@@ -133,7 +133,7 @@ func (message Message) render(out *strings.Builder) {
 }
 
 func (field Field) render(out *strings.Builder, indent string) {
-	writeComment(out, indent, field.Doc)
+	writeComment(out, indent, field.Description)
 	for _, note := range field.Notes {
 		out.WriteString(indent + "// " + note + "\n")
 	}

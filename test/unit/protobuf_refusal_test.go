@@ -41,7 +41,7 @@ func TestTheProjectionRefusesWhatWouldNotStaySaid(t *testing.T) {
 			reason: "no repeated repeated",
 		},
 		"a variant that is a list": {
-			shape: schema.OneOf[dynamic.Value]("Choice",
+			shape: schema.Union[dynamic.Value]("Choice",
 				schema.DynamicVariant("many", schema.List(schema.Int32())).WithNumber(1)),
 			reason: "cannot be repeated",
 		},
@@ -64,7 +64,7 @@ func TestAUnionWithADiscriminatingFieldIsRefused(t *testing.T) {
 	// two could contradict each other -- so the untagged form is the one that
 	// projects, and this says so rather than emitting a message with a
 	// redundant field in it.
-	tagged := schema.OneOfBy[dynamic.Value]("Tolerance", "type",
+	tagged := schema.TaggedUnion[dynamic.Value]("Tolerance", "type",
 		schema.DynamicVariant("iso2768", schema.Struct[dynamic.Value]("Iso2768",
 			schema.DynamicField("grade", schema.Text()).WithNumber(1))).WithNumber(1),
 	)

@@ -75,16 +75,16 @@ type Scalar struct {
 // A named object becomes a reusable component in projections that have them, so
 // a type used by ten endpoints is described once. An unnamed object is inlined.
 type Object struct {
-	Name   string
-	Doc    string
-	Fields []Field
+	Name        string
+	Description string
+	Fields      []Field
 }
 
 // Field is one member of an object.
 type Field struct {
-	Name string
-	Doc  string
-	Node Node
+	Name        string
+	Description string
+	Node        Node
 	// Optional says the field may be absent.
 	Optional bool
 	// Number is the field's number on a wire that identifies fields by number
@@ -141,16 +141,16 @@ type Mapping struct {
 // idea, and a projection has to know which, so the description says.
 type Union struct {
 	Name          string
-	Doc           string
+	Description   string
 	Discriminator string
 	Variants      []Variant
 }
 
 // Variant is one alternative of a union.
 type Variant struct {
-	Name string
-	Doc  string
-	Node Node
+	Name        string
+	Description string
+	Node        Node
 	// Number is the variant's number, for the same reason a Field has one: a
 	// union becomes a oneof, and each of its members is numbered.
 	Number int

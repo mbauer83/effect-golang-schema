@@ -35,8 +35,8 @@ var rectangleSchema = schema.Struct[Rectangle]("Rectangle",
 
 // A union names the variant it carries as the object's single member, so a
 // decoder knows which shape follows before it reads it.
-func ExampleOneOf() {
-	shapes := schema.OneOf[Shape]("Shape",
+func ExampleUnion() {
+	shapes := schema.Union[Shape]("Shape",
 		schema.VariantOf("circle", circleSchema,
 			func(shape Shape) (Circle, bool) { circle, is := shape.(Circle); return circle, is },
 			func(circle Circle) Shape { return circle }),

@@ -42,7 +42,7 @@ var rectangleSchema = schema.Struct[Rectangle]("Rectangle",
 		func(rectangle *Rectangle, height float64) { rectangle.Height = height }),
 )
 
-var shapeSchema = schema.OneOf[Shape]("Shape",
+var shapeSchema = schema.Union[Shape]("Shape",
 	schema.VariantOf("circle", circleSchema,
 		func(shape Shape) (Circle, bool) { circle, is := shape.(Circle); return circle, is },
 		func(circle Circle) Shape { return circle }).
@@ -148,10 +148,10 @@ func TestUnionDeclarationMistakesAreReportedRatherThanPanicking(t *testing.T) {
 		func(circle Circle) Shape { return circle })
 
 	cases := map[string]schema.Schema[Shape]{
-		"no variants":  schema.OneOf[Shape]("Shape"),
-		"two circles":  schema.OneOf[Shape]("Shape", circle, circle),
-		"nameless":     schema.OneOf[Shape]("Shape", schema.VariantOf[Shape, Circle]("", circleSchema, nil, nil)),
-		"faulted case": schema.OneOf[Shape]("Shape", schema.VariantOf[Shape, Circle]("circle", schema.Schema[Circle]{}, nil, nil)),
+		"no variants":  schema.Union[Shape]("Shape"),
+		"two circles":  schema.Union[Shape]("Shape", circle, circle),
+		"nameless":     schema.Union[Shape]("Shape", schema.VariantOf[Shape, Circle]("", circleSchema, nil, nil)),
+		"faulted case": schema.Union[Shape]("Shape", schema.VariantOf[Shape, Circle]("circle", schema.Schema[Circle]{}, nil, nil)),
 	}
 	for mistake, declared := range cases {
 		if err := schema.Validate(declared); err == nil {

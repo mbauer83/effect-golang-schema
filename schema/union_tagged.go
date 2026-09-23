@@ -18,7 +18,7 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// OneOfBy describes A as a choice between variants told apart by a field.
+// TaggedUnion describes A as a choice between variants told apart by a field.
 //
 // The field is written by the union and is not part of a variant's own shape,
 // so a Go type does not carry a tag it never reads. A variant that declares a
@@ -27,7 +27,7 @@ import (
 //
 // Every variant must be an object, because a field inside it is where the name
 // goes. Variants are tried in declared order on encode, as OneOf's are.
-func OneOfBy[A any](name string, discriminator string, variants ...Variant[A]) Schema[A] {
+func TaggedUnion[A any](name string, discriminator string, variants ...Variant[A]) Schema[A] {
 	node := structure.Union{
 		Name:          name,
 		Discriminator: discriminator,

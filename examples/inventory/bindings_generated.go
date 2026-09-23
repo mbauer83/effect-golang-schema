@@ -54,7 +54,7 @@ var ItemSchema = schema.Struct[Item]("Item",
 type Movement interface{ isMovement() }
 
 // MovementSchema describes Movement. It is generated from its description.
-var MovementSchema = schema.OneOf[Movement]("Movement",
+var MovementSchema = schema.Union[Movement]("Movement",
 	schema.VariantOf("received", ReceivedSchema,
 		func(value Movement) (Received, bool) { variant, is := value.(Received); return variant, is },
 		func(variant Received) Movement { return variant }).WithDescription("stock arriving"),

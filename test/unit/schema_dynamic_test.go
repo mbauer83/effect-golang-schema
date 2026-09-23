@@ -189,7 +189,7 @@ func TestADescriptionsMistakesAreReportedRatherThanPanicking(t *testing.T) {
 		"a member whose schema is faulted": schema.Validate(
 			schema.Struct[dynamic.Value]("Book", schema.DynamicField("title", schema.Text().Check(schema.Pattern(`[`))))),
 		"no description":  schema.Validate(schema.Dynamic(nil)),
-		"no alternatives": schema.Validate(schema.OneOf[dynamic.Value]("Shape")),
+		"no alternatives": schema.Validate(schema.Union[dynamic.Value]("Shape")),
 		// A bound field's getter returns a value and not whether there is one,
 		// so it cannot be made optional after the fact.
 		"a bound field made optional": schema.Validate(schema.Struct[Book]("Book",

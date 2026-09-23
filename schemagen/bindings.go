@@ -74,12 +74,12 @@ func writeObjectBinding(out *bytes.Buffer, shape structure.Object, markers []str
 		return err
 	}
 
-	writeDoc(out, shape.Name, shape.Doc)
+	writeDoc(out, shape.Name, shape.Description)
 	fmt.Fprintf(out, "type %s struct {\n", shape.Name)
 	for index, member := range shape.Fields {
 		field := binding.fields[index]
-		if member.Doc != "" {
-			fmt.Fprintf(out, "// %s\n", member.Doc)
+		if member.Description != "" {
+			fmt.Fprintf(out, "// %s\n", member.Description)
 		}
 		fmt.Fprintf(out, "%s %s `json:%s`\n", field.name, field.goType, strconv.Quote(jsonTag(field)))
 	}
@@ -109,7 +109,7 @@ func jsonTag(field structField) string {
 // structTypeOf turns a described object into the form the shared renderer
 // takes.
 func structTypeOf(shape structure.Object) (structType, error) {
-	binding := structType{name: shape.Name, doc: shape.Doc}
+	binding := structType{name: shape.Name, doc: shape.Description}
 	for _, member := range shape.Fields {
 		field, err := structFieldOf(shape.Name, member)
 		if err != nil {
@@ -140,7 +140,7 @@ func structFieldOf(owner string, member structure.Field) (structField, error) {
 	field := structField{
 		name:     name,
 		wire:     member.Name,
-		doc:      member.Doc,
+		doc:      member.Description,
 		shape:    shape,
 		optional: member.Optional,
 		goType:   element,
