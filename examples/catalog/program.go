@@ -37,19 +37,19 @@ type published struct {
 // it is the reason to prefer Workflow by default.
 func Program(inputPath string, normalisedPath string, contractPath string) catalogEffect[Report] {
 	io := effect.IOFor[effect.Unit]()
-	return direct.Run(func(bind *direct.Binder[effect.Unit, Fault]) Report {
-		direct.Bind(bind, validated())
+	return direct.Run(func(do *direct.Do[effect.Unit, Fault]) Report {
+		do.Await(validated())
 
-		document := direct.Bind(bind, read(io, inputPath))
-		catalog := direct.Bind(bind, decoded(document))
-		encoded := direct.Bind(bind, normalised(catalog))
-		direct.Bind(bind, write(io, normalisedPath, encoded))
+		document := do.Await(read(io, inputPath))
+		catalog := do.Await(decoded(document))
+		encoded := do.Await(normalised(catalog))
+		do.Await(write(io, normalisedPath, encoded))
 
-		contract := direct.Bind(bind, contract())
-		direct.Bind(bind, write(io, contractPath, contract.document))
+		contract := do.Await(contract())
+		do.Await(write(io, contractPath, contract.document))
 
 		return report(catalog, contract)
-	}).Named("catalog")
+	}).WithName("catalog")
 }
 
 // validated refuses to start on a schema that could never work.
@@ -59,19 +59,19 @@ func validated() catalogEffect[effect.Unit] {
 			return effect.Unit{}, schema.Validate(Schema)
 		},
 		faulting[error]("validating the catalogue schema"),
-	).Named("validate-schema")
+	).WithName("validate-schema")
 }
 
 func read(io effect.IOOperations[effect.Unit], path string) catalogEffect[[]byte] {
 	return io.ReadFile(path).
 		MapError(faulting[effect.IOError]("reading the catalogue")).
-		Named("read-catalogue")
+		WithName("read-catalogue")
 }
 
 func write(io effect.IOOperations[effect.Unit], path string, document []byte) catalogEffect[effect.Unit] {
 	return io.WriteFile(path, document, fs.FileMode(0o600)).
 		MapError(faulting[effect.IOError]("writing " + path)).
-		Named("write-document")
+		WithName("write-document")
 }
 
 // decoded is where a document becomes a value. It is fallible and belongs in
@@ -83,7 +83,7 @@ func decoded(document []byte) catalogEffect[Catalog] {
 			return schema.DecodeJSON(Schema, document)
 		},
 		faulting[error]("decoding the catalogue"),
-	).Named("decode-catalogue")
+	).WithName("decode-catalogue")
 }
 
 // normalised writes the decoded value back out. Encoding is deterministic, so
@@ -94,7 +94,7 @@ func normalised(catalog Catalog) catalogEffect[[]byte] {
 			return schema.EncodeJSON(Schema, catalog)
 		},
 		faulting[error]("normalising the catalogue"),
-	).Named("normalise-catalogue")
+	).WithName("normalise-catalogue")
 }
 
 // contract projects the one description into the published one. No shape is
@@ -110,7 +110,7 @@ func contract() catalogEffect[published] {
 			return published{document: document, components: projected.ComponentNames()}, nil
 		},
 		faulting[error]("publishing the contract"),
-	).Named("publish-contract")
+	).WithName("publish-contract")
 }
 
 func report(catalog Catalog, contract published) Report {
