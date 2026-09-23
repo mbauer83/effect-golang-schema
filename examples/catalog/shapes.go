@@ -48,7 +48,7 @@ var InStockSchema = schema.Struct[InStock]("InStock",
 		func(value *InStock, field int) { value.Count = field }).WithDescription("Count is how many copies are on the shelf."),
 ).WithDescription("InStock is a title on the shelf, with how many copies.")
 
-// OnOrderSchema describes Awaited, binding the Go type to the wire.
+// OnOrderSchema describes OnOrder, binding the Go type to the wire.
 var OnOrderSchema = schema.Struct[OnOrder]("Awaited",
 	schema.FieldOf("expected", schema.Time(),
 		func(value OnOrder) time.Time { return value.Expected },
