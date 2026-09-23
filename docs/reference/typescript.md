@@ -38,7 +38,9 @@ export type Film = typeof Film.Type;
 
 Every named object and union reachable from the roots becomes an exported value
 and an exported type, declared once and in an order in which each is declared
-before it is used. A name's qualifier is dropped: `catalog.Film` is `Film`. Two
+before it is used. A name's qualifier is dropped and the rest is written in
+PascalCase, as TypeScript names a type: `catalog.Film` is `Film` and `card_row`
+is `CardRow`. Member names are the wire's and are left exactly as they are. Two
 different shapes with one name are refused rather than one silently replacing
 the other.
 

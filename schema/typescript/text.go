@@ -70,9 +70,27 @@ func referenceName(reference structure.Reference) string {
 	return ""
 }
 
+// identifier is the TypeScript name of a component: the last segment of its
+// schema name -- a qualified name like "catalog.Film" carries it after its dot
+// -- written in PascalCase, as TypeScript names a type, whatever case the
+// schema used: "card_row" and "card-row" are both CardRow.
 func identifier(name string) string {
 	if at := strings.LastIndex(name, "."); at >= 0 {
 		name = name[at+1:]
 	}
-	return name
+	var out strings.Builder
+	upper := true
+	for _, r := range name {
+		if r == '_' || r == '-' || r == ' ' {
+			upper = true
+			continue
+		}
+		if upper {
+			out.WriteString(strings.ToUpper(string(r)))
+			upper = false
+			continue
+		}
+		out.WriteRune(r)
+	}
+	return out.String()
 }

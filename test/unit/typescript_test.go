@@ -94,3 +94,21 @@ func TestTwoDifferentShapesWithOneNameAreRefused(t *testing.T) {
 		t.Fatal("expected two shapes named Same to be refused")
 	}
 }
+
+func TestAComponentIsNamedInPascalCaseWhateverCaseTheSchemaUsed(t *testing.T) {
+	type row struct{ Title string }
+	cardRow := schema.Struct[row]("card_row",
+		schema.FieldOf("title_text", schema.Text(),
+			func(value row) string { return value.Title },
+			func(value *row, title string) { value.Title = title }))
+
+	module, err := typescript.Module("", cardRow.Structure())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The type is TypeScript's to name; the key is the wire's, and stays.
+	if !strings.Contains(module, "export const CardRow = Schema.Struct({") ||
+		!strings.Contains(module, "  title_text: Schema.String,") {
+		t.Fatalf("expected a PascalCase component with its wire key, got\n%s", module)
+	}
+}
