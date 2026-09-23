@@ -157,8 +157,8 @@ func TimestampOf(value Value) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	for _, layout := range instantLayouts {
-		if parsed, err := time.Parse(layout, text); err == nil {
-			return parsed, true
+		if instant, err := time.Parse(layout, text); err == nil {
+			return instant, true
 		}
 	}
 	return time.Time{}, false

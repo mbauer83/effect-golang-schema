@@ -70,10 +70,10 @@ func runCatalog(runtime *effect.Runtime, workspace string) {
 }
 
 func reportShutdown(runtime *effect.Runtime) {
-	remaining := runtime.LiveWork()
+	liveWork := runtime.LiveWork()
 	cleanup := runtime.Close(context.Background())
 	fmt.Printf("shutdown: %d fibers and %d resources still owned at Close\n",
-		remaining.Fibers, remaining.Resources)
+		liveWork.Fibers, liveWork.Resources)
 	if !cleanup.IsEmpty() {
 		fmt.Printf("shutdown cleanup: %s\n", cleanup)
 	}

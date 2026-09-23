@@ -18,13 +18,13 @@ import (
 
 func constrainText(inner Schema[string], constraints []structure.Constraint) Schema[string] {
 	for _, constraint := range constraints {
-		switch narrowed := constraint.(type) {
+		switch constraint := constraint.(type) {
 		case structure.MinLength:
-			inner = inner.Check(MinLength(narrowed.Value))
+			inner = inner.Check(MinLength(constraint.Value))
 		case structure.MaxLength:
-			inner = inner.Check(MaxLength(narrowed.Value))
+			inner = inner.Check(MaxLength(constraint.Value))
 		case structure.Pattern:
-			inner = inner.Check(Pattern(narrowed.Expression))
+			inner = inner.Check(Pattern(constraint.Expression))
 		default:
 			return faultySchema[string](inner.node, constraintMismatch("text"))
 		}
@@ -34,15 +34,15 @@ func constrainText(inner Schema[string], constraints []structure.Constraint) Sch
 
 func constrainInteger(inner Schema[int64], constraints []structure.Constraint) Schema[int64] {
 	for _, constraint := range constraints {
-		switch narrowed := constraint.(type) {
+		switch constraint := constraint.(type) {
 		case structure.AtLeast:
-			inner = inner.Check(AtLeast(wireBound(narrowed.Value)))
+			inner = inner.Check(AtLeast(wireBound(constraint.Value)))
 		case structure.AtMost:
-			inner = inner.Check(AtMost(wireBound(narrowed.Value)))
+			inner = inner.Check(AtMost(wireBound(constraint.Value)))
 		case structure.Above:
-			inner = inner.Check(Above(wireBound(narrowed.Value)))
+			inner = inner.Check(Above(wireBound(constraint.Value)))
 		case structure.Below:
-			inner = inner.Check(Below(wireBound(narrowed.Value)))
+			inner = inner.Check(Below(wireBound(constraint.Value)))
 		default:
 			return faultySchema[int64](inner.node, constraintMismatch("a whole number"))
 		}
@@ -52,15 +52,15 @@ func constrainInteger(inner Schema[int64], constraints []structure.Constraint) S
 
 func constrainNumber(inner Schema[float64], constraints []structure.Constraint) Schema[float64] {
 	for _, constraint := range constraints {
-		switch narrowed := constraint.(type) {
+		switch constraint := constraint.(type) {
 		case structure.AtLeast:
-			inner = inner.Check(AtLeast(narrowed.Value))
+			inner = inner.Check(AtLeast(constraint.Value))
 		case structure.AtMost:
-			inner = inner.Check(AtMost(narrowed.Value))
+			inner = inner.Check(AtMost(constraint.Value))
 		case structure.Above:
-			inner = inner.Check(Above(narrowed.Value))
+			inner = inner.Check(Above(constraint.Value))
 		case structure.Below:
-			inner = inner.Check(Below(narrowed.Value))
+			inner = inner.Check(Below(constraint.Value))
 		default:
 			return faultySchema[float64](inner.node, constraintMismatch("a number"))
 		}
@@ -70,11 +70,11 @@ func constrainNumber(inner Schema[float64], constraints []structure.Constraint) 
 
 func constrainList[A any](inner Schema[[]A], constraints []structure.Constraint) Schema[[]A] {
 	for _, constraint := range constraints {
-		switch narrowed := constraint.(type) {
+		switch constraint := constraint.(type) {
 		case structure.MinItems:
-			inner = inner.Check(MinItems[A](narrowed.Value))
+			inner = inner.Check(MinItems[A](constraint.Value))
 		case structure.MaxItems:
-			inner = inner.Check(MaxItems[A](narrowed.Value))
+			inner = inner.Check(MaxItems[A](constraint.Value))
 		default:
 			return faultySchema[[]A](inner.node, constraintMismatch("a list"))
 		}

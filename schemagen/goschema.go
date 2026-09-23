@@ -53,14 +53,14 @@ func scalarExpression(shape structure.Scalar) (string, error) {
 // baseExpression is the constructor for a scalar, how many of its constraints
 // that constructor already records, and the Go type it describes.
 func baseExpression(shape structure.Scalar) (string, int, string) {
-	if known, isFormat := schema.FormatConstructors[shape.Format]; isFormat {
-		return known.Call, known.ConstraintCount, known.GoType
+	if constructor, isFormat := schema.FormatConstructors[shape.Format]; isFormat {
+		return constructor.Call, constructor.ConstraintCount, constructor.GoType
 	}
 	if shape.Format != "" {
 		return "schema.TextFormat(" + strconv.Quote(shape.Format) + ")", 0, "string"
 	}
-	if known, precise := schema.PrecisionConstructors[shape.Precision]; precise {
-		return known.Call, known.ConstraintCount, known.GoType
+	if constructor, precise := schema.PrecisionConstructors[shape.Precision]; precise {
+		return constructor.Call, constructor.ConstraintCount, constructor.GoType
 	}
 	return kindExpression(shape.Kind), 0, kindType(shape.Kind)
 }
@@ -149,25 +149,25 @@ func constraintCall(constraint structure.Constraint, goType string) (string, err
 	generic := func(call string, value string) string {
 		return "schema." + call + "[" + goType + "](" + value + ")"
 	}
-	switch narrowed := constraint.(type) {
+	switch constraint := constraint.(type) {
 	case structure.AtLeast:
-		return generic("AtLeast", bound(narrowed.Value)), nil
+		return generic("AtLeast", bound(constraint.Value)), nil
 	case structure.AtMost:
-		return generic("AtMost", bound(narrowed.Value)), nil
+		return generic("AtMost", bound(constraint.Value)), nil
 	case structure.Above:
-		return generic("Above", bound(narrowed.Value)), nil
+		return generic("Above", bound(constraint.Value)), nil
 	case structure.Below:
-		return generic("Below", bound(narrowed.Value)), nil
+		return generic("Below", bound(constraint.Value)), nil
 	case structure.MinLength:
-		return "schema.MinLength(" + strconv.Itoa(narrowed.Value) + ")", nil
+		return "schema.MinLength(" + strconv.Itoa(constraint.Value) + ")", nil
 	case structure.MaxLength:
-		return "schema.MaxLength(" + strconv.Itoa(narrowed.Value) + ")", nil
+		return "schema.MaxLength(" + strconv.Itoa(constraint.Value) + ")", nil
 	case structure.Pattern:
-		return "schema.Pattern(" + strconv.Quote(narrowed.Expression) + ")", nil
+		return "schema.Pattern(" + strconv.Quote(constraint.Expression) + ")", nil
 	case structure.MinItems:
-		return generic("MinItems", strconv.Itoa(narrowed.Value)), nil
+		return generic("MinItems", strconv.Itoa(constraint.Value)), nil
 	case structure.MaxItems:
-		return generic("MaxItems", strconv.Itoa(narrowed.Value)), nil
+		return generic("MaxItems", strconv.Itoa(constraint.Value)), nil
 	default:
 		return "", errors.New("this constraint has no constructor")
 	}

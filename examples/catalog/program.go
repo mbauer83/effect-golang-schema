@@ -27,15 +27,15 @@ type publication struct {
 // Written in direct style, because the sequence is seven dependent stages and
 // each stage's value is what the next one reads: written as a chain, every
 // stage would nest inside the one before it.
-func Program(inputPath string, normalisedPath string, contractPath string) catalogEffect[Report] {
+func Program(inputPath string, normalFormPath string, contractPath string) catalogEffect[Report] {
 	io := effect.IOFor[effect.Unit]()
 	return effect.Gen(func(do *effect.Do[effect.Unit, Fault]) Report {
 		do.Await(validate())
 
 		document := do.Await(read(io, inputPath))
 		catalog := do.Await(decode(document))
-		encoded := do.Await(normalise(catalog))
-		do.Await(write(io, normalisedPath, encoded))
+		normalForm := do.Await(normalise(catalog))
+		do.Await(write(io, normalFormPath, normalForm))
 
 		contract := do.Await(contract())
 		do.Await(write(io, contractPath, contract.document))

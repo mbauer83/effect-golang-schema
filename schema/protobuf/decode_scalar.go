@@ -37,12 +37,12 @@ func readUnion(union structure.Union, bytes []byte) (dynamic.Value, error) {
 		return nil, fmt.Errorf("%s: %w", union.Name, err)
 	}
 
-	chosen, last := lastVariant(union, occurrences)
+	variantNumber, last := lastVariant(union, occurrences)
 	if !last {
 		return nil, fmt.Errorf("%s is a choice of one, and the message chose none", union.Name)
 	}
-	variant := byNumber[chosen]
-	value, err := readSingle(variant.Node, occurrences[chosen][len(occurrences[chosen])-1])
+	variant := byNumber[variantNumber]
+	value, err := readSingle(variant.Node, occurrences[variantNumber][len(occurrences[variantNumber])-1])
 	if err != nil {
 		return nil, fmt.Errorf("variant %q of %s: %w", variant.Name, union.Name, err)
 	}
@@ -58,13 +58,13 @@ func readUnion(union structure.Union, bytes []byte) (dynamic.Value, error) {
 // them, so this walks the declaration and takes the one that was present --
 // which is unambiguous because a well-formed oneof carries exactly one.
 func lastVariant(union structure.Union, occurrences map[int][]occurrence) (int, bool) {
-	chosen, written := 0, false
+	variantNumber, written := 0, false
 	for _, variant := range union.Variants {
 		if len(occurrences[variant.Number]) > 0 {
-			chosen, written = variant.Number, true
+			variantNumber, written = variant.Number, true
 		}
 	}
-	return chosen, written
+	return variantNumber, written
 }
 
 func readScalar(shape structure.Scalar, appearance occurrence) (dynamic.Value, error) {

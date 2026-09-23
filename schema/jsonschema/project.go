@@ -39,11 +39,11 @@ func ProjectAllWithPointer(
 		ancestors:  map[string]bool{},
 		reference:  pointer,
 	}
-	projected := make([]Node, 0, len(nodes))
+	schemas := make([]Node, 0, len(nodes))
 	for _, node := range nodes {
-		projected = append(projected, projection.node(node))
+		schemas = append(schemas, projection.node(node))
 	}
-	return projected, projection.components
+	return schemas, projection.components
 }
 
 // ReferenceTo names a component the way the 2020-12 dialect does.

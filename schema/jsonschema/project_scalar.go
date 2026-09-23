@@ -51,25 +51,25 @@ var precisionFormats = map[structure.Precision]string{
 func bounds(constraints []structure.Constraint) Bounds {
 	keywords := Bounds{}
 	for _, constraint := range constraints {
-		switch narrowed := constraint.(type) {
+		switch constraint := constraint.(type) {
 		case structure.AtLeast:
-			keywords.Minimum = &narrowed.Value
+			keywords.Minimum = &constraint.Value
 		case structure.AtMost:
-			keywords.Maximum = &narrowed.Value
+			keywords.Maximum = &constraint.Value
 		case structure.Above:
-			keywords.ExclusiveMinimum = &narrowed.Value
+			keywords.ExclusiveMinimum = &constraint.Value
 		case structure.Below:
-			keywords.ExclusiveMaximum = &narrowed.Value
+			keywords.ExclusiveMaximum = &constraint.Value
 		case structure.MinLength:
-			keywords.MinLength = &narrowed.Value
+			keywords.MinLength = &constraint.Value
 		case structure.MaxLength:
-			keywords.MaxLength = &narrowed.Value
+			keywords.MaxLength = &constraint.Value
 		case structure.Pattern:
-			keywords.Pattern = narrowed.Expression
+			keywords.Pattern = constraint.Expression
 		case structure.MinItems:
-			keywords.MinItems = &narrowed.Value
+			keywords.MinItems = &constraint.Value
 		case structure.MaxItems:
-			keywords.MaxItems = &narrowed.Value
+			keywords.MaxItems = &constraint.Value
 		}
 	}
 	return keywords

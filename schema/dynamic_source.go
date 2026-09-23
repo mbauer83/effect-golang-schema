@@ -18,20 +18,20 @@ import (
 // for one value at a time, and a container hands its members over to be asked
 // about in turn.
 type dynamicSource struct {
-	pending []dynamic.Value
+	queue []dynamic.Value
 }
 
 func (source *dynamicSource) take() (dynamic.Value, error) {
-	if len(source.pending) == 0 {
+	if len(source.queue) == 0 {
 		return nil, fail("the value ended early", nil)
 	}
-	value := source.pending[len(source.pending)-1]
-	source.pending = source.pending[:len(source.pending)-1]
+	value := source.queue[len(source.queue)-1]
+	source.queue = source.queue[:len(source.queue)-1]
 	return value, nil
 }
 
 func (source *dynamicSource) push(value dynamic.Value) {
-	source.pending = append(source.pending, value)
+	source.queue = append(source.queue, value)
 }
 
 // Text accepts a byte string as well as text, on dynamic.TextOf's terms: which
@@ -114,10 +114,10 @@ func (source *dynamicSource) Timestamp() (time.Time, error) {
 // Null consumes the value only when it is one, because asking is not the same
 // as reading and a present value must still be there afterwards.
 func (source *dynamicSource) Null() (bool, error) {
-	if len(source.pending) == 0 {
+	if len(source.queue) == 0 {
 		return false, fail("the value ended early", nil)
 	}
-	if _, absent := source.pending[len(source.pending)-1].(dynamic.Absent); !absent {
+	if _, absent := source.queue[len(source.queue)-1].(dynamic.Absent); !absent {
 		return false, nil
 	}
 	_, err := source.take()
@@ -165,14 +165,14 @@ func (source *dynamicSource) Buffer() (dynamic.Value, error) {
 
 // takeAs reads the next value and checks it is the case the schema asked for.
 func takeAs[A dynamic.Value](source *dynamicSource, kind string) (A, error) {
-	var missing A
+	var zero A
 	value, err := source.take()
 	if err != nil {
-		return missing, err
+		return zero, err
 	}
 	a, is := value.(A)
 	if !is {
-		return missing, fail("expected "+kind, nil)
+		return zero, fail("expected "+kind, nil)
 	}
 	return a, nil
 }

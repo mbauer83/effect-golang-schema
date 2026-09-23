@@ -35,11 +35,11 @@ func UUID() Schema[string] {
 // not an address, and a field asking for an address means the address.
 func Email() Schema[string] {
 	return withCheck(TextFormat("email"), func(value string) error {
-		parsed, err := mail.ParseAddress(value)
+		address, err := mail.ParseAddress(value)
 		if err != nil {
 			return fail("is not an email address", err)
 		}
-		if parsed.Address != value {
+		if address.Address != value {
 			return fail("is a mailbox rather than an address", nil)
 		}
 		return nil
@@ -52,11 +52,11 @@ func Email() Schema[string] {
 // own constructor rather than being quietly admitted here.
 func URI() Schema[string] {
 	return withCheck(TextFormat("uri"), func(value string) error {
-		parsed, err := url.Parse(value)
+		uri, err := url.Parse(value)
 		if err != nil {
 			return fail("is not a URI", err)
 		}
-		if !parsed.IsAbs() {
+		if !uri.IsAbs() {
 			return fail("is a relative reference rather than a URI", nil)
 		}
 		return nil
@@ -115,11 +115,11 @@ func IPv6() Schema[string] {
 // parsed form rather than from the text, because a dotted quad is also a valid
 // IPv6 address written the short way, and net.ParseIP admits both.
 func checkAddress(value string, width int, reason string) error {
-	parsed, err := netip.ParseAddr(value)
+	address, err := netip.ParseAddr(value)
 	if err != nil {
 		return fail(reason, err)
 	}
-	if len(parsed.AsSlice()) != width {
+	if len(address.AsSlice()) != width {
 		return fail(reason, nil)
 	}
 	return nil
@@ -143,15 +143,15 @@ func withCheck[A any](inner Schema[A], check func(A) error) Schema[A] {
 			return Encode(inner, value, into)
 		},
 		func(from Source) (A, error) {
-			decoded, err := Decode(inner, from)
+			value, err := Decode(inner, from)
 			if err != nil {
-				return decoded, err
+				return value, err
 			}
-			if err := check(decoded); err != nil {
-				var missing A
-				return missing, err
+			if err := check(value); err != nil {
+				var zero A
+				return zero, err
 			}
-			return decoded, nil
+			return value, nil
 		},
 	)
 }

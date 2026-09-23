@@ -46,7 +46,7 @@ func writeVariant(out *bytes.Buffer, union string, variant structure.Variant) er
 	}
 	fmt.Fprintf(out, "schema.VariantOf(%s, %sSchema,\n",
 		strconv.Quote(variant.Name), object.Name)
-	fmt.Fprintf(out, "func(value %s) (%s, bool) { narrowed, is := value.(%s); return narrowed, is },\n",
+	fmt.Fprintf(out, "func(value %s) (%s, bool) { variant, is := value.(%s); return variant, is },\n",
 		union, object.Name, object.Name)
 	fmt.Fprintf(out, "func(variant %s) %s { return variant })", object.Name, union)
 	if variant.Doc != "" {

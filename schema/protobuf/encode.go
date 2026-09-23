@@ -67,14 +67,14 @@ func writeUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 	if !isObject {
 		return nil, fmt.Errorf("%s is a oneof, and the value is a %T", union.Name, value)
 	}
-	chosen, only := object.Only()
+	member, only := object.Only()
 	if !only {
 		return nil, fmt.Errorf("%s is a choice of one, and the value chose %d",
 			union.Name, len(object.Fields))
 	}
 
 	for _, variant := range union.Variants {
-		if variant.Name != chosen.Name {
+		if variant.Name != member.Name {
 			continue
 		}
 		if variant.Number < 1 {
@@ -83,13 +83,13 @@ func writeUnion(union structure.Union, value dynamic.Value) ([]byte, error) {
 		into := &writer{}
 		err := writeField(into,
 			structure.Field{Name: variant.Name, Node: variant.Node, Number: variant.Number},
-			chosen.Value)
+			member.Value)
 		return into.bytes, err
 	}
-	return nil, fmt.Errorf("%s has no variant named %q", union.Name, chosen.Name)
+	return nil, fmt.Errorf("%s has no variant named %q", union.Name, member.Name)
 }
 
-// writeField writes one writeField: its tag, and its value in the layout its shape has.
+// writeField writes one field: its tag, and its value in the layout its shape has.
 func writeField(into *writer, member structure.Field, value dynamic.Value) error {
 	switch shape := member.Node.(type) {
 	case structure.Sequence:
@@ -121,11 +121,11 @@ func writeSingle(into *writer, member structure.Field, value dynamic.Value) erro
 	case structure.Scalar:
 		return writeScalar(into, member.Number, shape, value, member.Optional)
 	case structure.Object, structure.Union, structure.Reference:
-		nested, err := write(member.Node, value)
+		payload, err := write(member.Node, value)
 		if err != nil {
 			return err
 		}
-		into.block(member.Number, nested)
+		into.block(member.Number, payload)
 		return nil
 	default:
 		return fmt.Errorf("%T has no proto3 form", shape)

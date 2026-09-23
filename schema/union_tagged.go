@@ -133,37 +133,37 @@ func decodeTagged[A any](
 	discriminator string,
 	byName map[string]Variant[A],
 ) (A, error) {
-	var missing A
+	var zero A
 	bufferer, can := from.(Bufferer)
 	if !can {
-		return missing, fail(
+		return zero, fail(
 			"this format cannot read a union told apart by a field, because the "+
 				"name may arrive after the fields it settles", nil)
 	}
 	document, err := bufferer.Buffer()
 	if err != nil {
-		return missing, err
+		return zero, err
 	}
 
 	object, isObject := document.(dynamic.Object)
 	if !isObject {
-		return missing, fail("is not an object", nil)
+		return zero, fail("is not an object", nil)
 	}
 	tag, err := tagOf(object, discriminator)
 	if err != nil {
-		return missing, err
+		return zero, err
 	}
 	variant, known := byName[tag]
 	if !known {
-		return missing, fail("no variant is named "+tag, nil)
+		return zero, fail("no variant is named "+tag, nil)
 	}
 	// The name is the union's, not the variant's, so the variant reads the
 	// object it would have written: its own fields and nothing else.
 	value, err := variant.decode(&dynamicSource{
-		pending: []dynamic.Value{omit(object, discriminator)},
+		queue: []dynamic.Value{omit(object, discriminator)},
 	})
 	if err != nil {
-		return missing, within(tag, err)
+		return zero, within(tag, err)
 	}
 	return value, nil
 }

@@ -27,10 +27,10 @@ func ToDynamic[A any](shape Schema[A], value A) (dynamic.Value, error) {
 // how a value that arrived as a shape becomes something a Go program can hold.
 func FromDynamic[A any](shape Schema[A], value dynamic.Value) (A, error) {
 	if value == nil {
-		var missing A
-		return missing, fail("is missing", nil)
+		var zero A
+		return zero, fail("is missing", nil)
 	}
-	return Decode(shape, &dynamicSource{pending: []dynamic.Value{value}})
+	return Decode(shape, &dynamicSource{queue: []dynamic.Value{value}})
 }
 
 // dynamicSink builds a value as a schema writes it.

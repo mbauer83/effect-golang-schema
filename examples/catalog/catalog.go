@@ -50,8 +50,8 @@ type InStock struct {
 
 // OnOrder is a title not yet arrived, with when it is expected.
 type OnOrder struct {
-	// Expected is when the title should arrive.
-	Expected time.Time
+	// DueDate is when the title should arrive.
+	DueDate time.Time
 }
 
 // Discontinued is a title that will not be restocked.

@@ -40,11 +40,11 @@ func (object Object) Identities() []Field {
 // Identities, and the two are different questions rather than one with a
 // convenience -- which is why this says first rather than the.
 func (object Object) Identity() (Field, bool) {
-	named := object.Identities()
-	if len(named) == 0 {
+	identities := object.Identities()
+	if len(identities) == 0 {
 		return Field{}, false
 	}
-	return named[0], true
+	return identities[0], true
 }
 
 // IsEntity reports whether this object is a thing in its own right rather than

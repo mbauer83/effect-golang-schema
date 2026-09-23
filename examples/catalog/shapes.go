@@ -51,8 +51,8 @@ var InStockSchema = schema.Struct[InStock]("InStock",
 // OnOrderSchema describes OnOrder, binding the Go type to the wire.
 var OnOrderSchema = schema.Struct[OnOrder]("Awaited",
 	schema.FieldOf("expected", schema.Time(),
-		func(value OnOrder) time.Time { return value.Expected },
-		func(value *OnOrder, field time.Time) { value.Expected = field }).WithDescription("Expected is when the title should arrive."),
+		func(value OnOrder) time.Time { return value.DueDate },
+		func(value *OnOrder, field time.Time) { value.DueDate = field }).WithDescription("DueDate is when the title should arrive."),
 ).WithDescription("Awaited is a title not yet arrived, with when it is expected.")
 
 // DiscontinuedSchema describes Discontinued, binding the Go type to the wire.

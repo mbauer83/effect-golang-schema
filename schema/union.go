@@ -41,19 +41,19 @@ func VariantOf[A, B any](
 			return matched
 		},
 		encode: func(value A, into Sink) error {
-			narrowed, matched := narrow(value)
+			variant, matched := narrow(value)
 			if !matched {
 				return fail("the value is not the "+name+" variant", nil)
 			}
-			return Encode(shape, narrowed, into)
+			return Encode(shape, variant, into)
 		},
 		decode: func(from Source) (A, error) {
-			decoded, err := Decode(shape, from)
+			value, err := Decode(shape, from)
 			if err != nil {
-				var missing A
-				return missing, err
+				var zero A
+				return zero, err
 			}
-			return widen(decoded), nil
+			return widen(value), nil
 		},
 	}
 }
@@ -181,20 +181,20 @@ func decodeVariant[A any](from Source, byName map[string]Variant[A]) (A, error) 
 			return fail("no variant is named "+name, nil)
 		}
 		tag = name
-		decoded, err := variant.decode(from)
+		value, err := variant.decode(from)
 		if err != nil {
 			return within(name, err)
 		}
-		result = decoded
+		result = value
 		return nil
 	})
 	if err != nil {
-		var missing A
-		return missing, err
+		var zero A
+		return zero, err
 	}
 	if tag == "" {
-		var missing A
-		return missing, fail("a union names one variant, and none is present", nil)
+		var zero A
+		return zero, fail("a union names one variant, and none is present", nil)
 	}
 	return result, nil
 }

@@ -84,8 +84,8 @@ func Encode[A any](schema Schema[A], value A, into Sink) error {
 // Decode reads a value from a source.
 func Decode[A any](schema Schema[A], from Source) (A, error) {
 	if err := Validate(schema); err != nil {
-		var missing A
-		return missing, err
+		var zero A
+		return zero, err
 	}
 	return schema.decode(from)
 }
@@ -179,15 +179,15 @@ func TransformOrFail[A, B any](
 		func(source Source) (B, error) {
 			underlying, err := Decode(inner, source)
 			if err != nil {
-				var missing B
-				return missing, err
+				var zero B
+				return zero, err
 			}
-			converted, err := to(underlying)
+			value, err := to(underlying)
 			if err != nil {
-				var missing B
-				return missing, refusalError(err)
+				var zero B
+				return zero, refusalError(err)
 			}
-			return converted, nil
+			return value, nil
 		},
 	)
 }

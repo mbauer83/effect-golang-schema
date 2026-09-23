@@ -48,11 +48,11 @@ func FieldOf[A, B any](
 			return Encode(shape, get(value), into)
 		},
 		decode: func(target *A, from Source) error {
-			decoded, err := Decode(shape, from)
+			value, err := Decode(shape, from)
 			if err != nil {
 				return err
 			}
-			set(target, decoded)
+			set(target, value)
 			return nil
 		},
 	}
@@ -94,11 +94,11 @@ func OptionalFieldOf[A, B any](
 			if absent {
 				return nil
 			}
-			decoded, err := Decode(shape, from)
+			value, err := Decode(shape, from)
 			if err != nil {
 				return err
 			}
-			set(target, decoded)
+			set(target, value)
 			return nil
 		},
 	}

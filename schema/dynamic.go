@@ -93,11 +93,11 @@ func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 			return Encode(codec, member, into)
 		},
 		decode: func(target *dynamic.Value, from Source) error {
-			decoded, err := Decode(codec, from)
+			value, err := Decode(codec, from)
 			if err != nil {
 				return err
 			}
-			*target = withMember(*target, name, decoded)
+			*target = withMember(*target, name, value)
 			return nil
 		},
 	}
@@ -133,11 +133,11 @@ func DynamicVariant[B any](name string, shape Schema[B]) Variant[dynamic.Value] 
 			return Encode(codec, variant.Value, into)
 		},
 		decode: func(from Source) (dynamic.Value, error) {
-			decoded, err := Decode(codec, from)
+			value, err := Decode(codec, from)
 			if err != nil {
 				return nil, err
 			}
-			return dynamic.Object{Fields: []dynamic.Field{{Name: name, Value: decoded}}}, nil
+			return dynamic.Object{Fields: []dynamic.Field{{Name: name, Value: value}}}, nil
 		},
 	}
 }

@@ -38,11 +38,11 @@ func Int() Schema[int] {
 	return withPrecision(
 		TransformOrFail(Int64(),
 			func(value int64) (int, error) {
-				narrowed := int(value)
-				if int64(narrowed) != value {
+				integer := int(value)
+				if int64(integer) != value {
 					return 0, fail("integer does not fit in an int", nil)
 				}
-				return narrowed, nil
+				return integer, nil
 			},
 			func(value int) (int64, error) { return int64(value), nil },
 		),
@@ -112,9 +112,9 @@ func encodeBytesAsText(value []byte) string {
 }
 
 func decodeTextAsBytes(value string) ([]byte, error) {
-	decoded, err := base64.StdEncoding.DecodeString(value)
+	bytes, err := base64.StdEncoding.DecodeString(value)
 	if err != nil {
 		return nil, fail("not valid base64", err)
 	}
-	return decoded, nil
+	return bytes, nil
 }

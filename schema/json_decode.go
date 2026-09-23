@@ -42,12 +42,12 @@ func (source *jsonSource) Integer() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	parsed, err := token.Int()
+	value, err := token.Int()
 	if err != nil {
 		// A JSON number that is not a whole number, or does not fit.
 		return 0, fail("expected an integer", err)
 	}
-	return parsed, nil
+	return value, nil
 }
 
 func (source *jsonSource) Number() (float64, error) {
@@ -55,11 +55,11 @@ func (source *jsonSource) Number() (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	parsed, err := token.Float()
+	value, err := token.Float()
 	if err != nil {
 		return 0, fail("expected a number", err)
 	}
-	return parsed, nil
+	return value, nil
 }
 
 func (source *jsonSource) Boolean() (bool, error) {
@@ -74,23 +74,23 @@ func (source *jsonSource) Boolean() (bool, error) {
 }
 
 func (source *jsonSource) Bytes() ([]byte, error) {
-	encoded, err := source.Text()
+	text, err := source.Text()
 	if err != nil {
 		return nil, err
 	}
-	return decodeTextAsBytes(encoded)
+	return decodeTextAsBytes(text)
 }
 
 func (source *jsonSource) Timestamp() (time.Time, error) {
-	encoded, err := source.Text()
+	text, err := source.Text()
 	if err != nil {
 		return time.Time{}, err
 	}
-	parsed, err := time.Parse(time.RFC3339, encoded)
+	instant, err := time.Parse(time.RFC3339, text)
 	if err != nil {
 		return time.Time{}, fail("expected an RFC 3339 timestamp", err)
 	}
-	return parsed, nil
+	return instant, nil
 }
 
 // Null consumes a null when the next value is one, and otherwise leaves the

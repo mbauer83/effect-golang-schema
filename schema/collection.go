@@ -31,19 +31,19 @@ func List[A any](element Schema[A]) Schema[[]A] {
 			return into.EndList()
 		},
 		func(from Source) ([]A, error) {
-			decoded := make([]A, 0)
+			list := make([]A, 0)
 			err := from.ReadList(func() error {
 				value, err := Decode(element, from)
 				if err != nil {
-					return within(listIndex(len(decoded)), err)
+					return within(listIndex(len(list)), err)
 				}
-				decoded = append(decoded, value)
+				list = append(list, value)
 				return nil
 			})
 			if err != nil {
 				return nil, err
 			}
-			return decoded, nil
+			return list, nil
 		},
 	)
 }
@@ -82,19 +82,19 @@ func Map[A any](value Schema[A]) Schema[map[string]A] {
 			return into.EndObject()
 		},
 		func(from Source) (map[string]A, error) {
-			decoded := make(map[string]A)
+			entries := make(map[string]A)
 			err := from.ReadObject(func(key string) error {
 				member, err := Decode(value, from)
 				if err != nil {
 					return within(key, err)
 				}
-				decoded[key] = member
+				entries[key] = member
 				return nil
 			})
 			if err != nil {
 				return nil, err
 			}
-			return decoded, nil
+			return entries, nil
 		},
 	)
 }
@@ -126,11 +126,11 @@ func Nullable[A any](inner Schema[A]) Schema[*A] {
 			if absent {
 				return nil, nil
 			}
-			decoded, err := Decode(inner, from)
+			value, err := Decode(inner, from)
 			if err != nil {
 				return nil, err
 			}
-			return &decoded, nil
+			return &value, nil
 		},
 	)
 }

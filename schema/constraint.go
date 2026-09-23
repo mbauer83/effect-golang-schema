@@ -53,14 +53,14 @@ type Constraint[A any] struct {
 // In the order given, so a value that breaks two of them is reported against
 // the first -- which is the one a reader of the declaration meets first.
 func (schema Schema[A]) Check(constraints ...Constraint[A]) Schema[A] {
-	narrowed := schema
+	result := schema
 	for _, constraint := range constraints {
 		if constraint.fault != nil {
 			return faultySchema[A](schema.node, constraint.fault)
 		}
-		narrowed = applyConstraint(narrowed, constraint.description, constraint.check)
+		result = applyConstraint(result, constraint.description, constraint.check)
 	}
-	return narrowed
+	return result
 }
 
 func newConstraint[A any](description structure.Constraint, check func(A) error) Constraint[A] {
@@ -91,15 +91,15 @@ func applyConstraint[A any](
 			return Encode(inner, value, into)
 		},
 		func(from Source) (A, error) {
-			decoded, err := Decode(inner, from)
+			value, err := Decode(inner, from)
 			if err != nil {
-				return decoded, err
+				return value, err
 			}
-			if err := check(decoded); err != nil {
-				var missing A
-				return missing, err
+			if err := check(value); err != nil {
+				var zero A
+				return zero, err
 			}
-			return decoded, nil
+			return value, nil
 		},
 	)
 }

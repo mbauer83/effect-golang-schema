@@ -98,13 +98,13 @@ func MaxLength(atMost int) Constraint[string] {
 // RE2; a pattern that does not compile is a declaration mistake and is
 // reported by Validate rather than panicking at the first request.
 func Pattern(expression string) Constraint[string] {
-	compiled, err := regexp.Compile(expression)
+	regex, err := regexp.Compile(expression)
 	if err != nil {
 		return Constraint[string]{fault: fail("the pattern does not compile", err)}
 	}
 	return newConstraint(structure.Pattern{Expression: expression},
 		func(value string) error {
-			if !compiled.MatchString(value) {
+			if !regex.MatchString(value) {
 				return fail("does not match "+expression, nil)
 			}
 			return nil

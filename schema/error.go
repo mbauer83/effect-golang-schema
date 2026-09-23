@@ -23,18 +23,18 @@ type Error struct {
 }
 
 func (failure *Error) Error() string {
-	var rendered strings.Builder
-	rendered.WriteString("schema: ")
-	rendered.WriteString(failure.Reason)
+	var message strings.Builder
+	message.WriteString("schema: ")
+	message.WriteString(failure.Reason)
 	if len(failure.Path) > 0 {
-		rendered.WriteString(" at ")
-		rendered.WriteString(strings.Join(failure.Path, "."))
+		message.WriteString(" at ")
+		message.WriteString(strings.Join(failure.Path, "."))
 	}
 	if failure.Err != nil {
-		rendered.WriteString(": ")
-		rendered.WriteString(failure.Err.Error())
+		message.WriteString(": ")
+		message.WriteString(failure.Err.Error())
 	}
-	return rendered.String()
+	return message.String()
 }
 
 // Unwrap exposes the underlying error, so errors.Is and errors.As keep working
@@ -90,8 +90,8 @@ func within(part string, err error) error {
 }
 
 func zeroSchemaError[A any]() error {
-	var missing A
-	return fail(fmt.Sprintf("the zero Schema[%T] has no codec", missing), nil)
+	var zero A
+	return fail(fmt.Sprintf("the zero Schema[%T] has no codec", zero), nil)
 }
 
 // errUnreadableValue reports a document position where no value begins.

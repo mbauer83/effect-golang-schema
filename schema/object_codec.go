@@ -95,14 +95,14 @@ func decodeFields[A any](from Source, byName map[string]Field[A], required []str
 		return within(name, field.decode(&result, from))
 	})
 	if err != nil {
-		var missing A
-		return missing, err
+		var zero A
+		return zero, err
 	}
 
 	for _, name := range required {
 		if !seen[name] {
-			var missing A
-			return missing, within(name, fail("required field is missing", nil))
+			var zero A
+			return zero, within(name, fail("required field is missing", nil))
 		}
 	}
 	return result, nil
