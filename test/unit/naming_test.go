@@ -159,3 +159,41 @@ func TestARespelledDescriptionKeepsANameGivenExactly(t *testing.T) {
 		t.Fatalf("expected the exact name kept and the other respelled, got %+v", spelled.Fields)
 	}
 }
+
+func TestASpelledSchemaSpellsItsNamesInEveryFormat(t *testing.T) {
+	stored := viewingSchema.Rename(viewingFilmID, "tmdb_id").Spelled(naming.KebabCase)
+
+	encoded, err := schema.EncodeJSON(stored, viewing{FilmID: 603, WatchedAt: "today"},
+		schema.MemberNaming(naming.CamelCase))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The schema's own strategy wins over the reader's, and the exact name
+	// stays exact.
+	if got := strings.TrimSpace(string(encoded)); got != `{"tmdb_id":603,"watched-at":"today"}` {
+		t.Fatalf("expected the schema's spelling, got %s", got)
+	}
+	value, err := schema.ToDynamic(stored, viewing{FilmID: 1, WatchedAt: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := schema.FromDynamic(stored, value)
+	if err != nil || decoded.FilmID != 1 {
+		t.Fatalf("expected the dynamic value to read back, got %+v, %v", decoded, err)
+	}
+	if fields := stored.Structure().(structure.Object).Fields; fields[1].Name != "watched-at" {
+		t.Fatalf("expected the description respelled, got %+v", fields)
+	}
+}
+
+func TestASpelledTaggedUnionStillReadsBack(t *testing.T) {
+	stored := edgeSchema.Spelled(naming.CamelCase)
+	encoded, err := schema.EncodeJSON(stored, corner{CornerRadius: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := schema.DecodeJSON(stored, encoded)
+	if err != nil || decoded.CornerRadius != 2 {
+		t.Fatalf("expected %s to read back, got %+v, %v", encoded, decoded, err)
+	}
+}
