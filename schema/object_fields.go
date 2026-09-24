@@ -1,18 +1,43 @@
 package schema
 
 import (
-	"github.com/mbauer83/effect-golang-schema/schema/dynamic"
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// Field describes one member of A: its name on the wire, its shape, how to read
-// it out of an A and how to write it into an A being built.
+// Field describes one member of A whose value is a B: its name on the wire,
+// its shape, and how to read it out of an A.
 //
-// The setter takes a pointer and the getter takes a value, so a struct is built
-// from its zero value one field at a time. That is what avoids needing an
-// N-argument constructor for every arity, and it is how a Go program builds a
-// struct anyway.
-type Field[A any] struct {
+// An A is made from its fields in one of two ways. Struct builds it from its
+// zero value, one setter at a time, which is how a Go program fills a plain
+// struct. Object hands the decoded values to a constructor, which reads each
+// through its field -- Of, Lookup -- and can refuse them, which is how a type
+// with rules is made: through the one function that enforces them.
+//
+// A field is also a handle. It keeps its identity through every modifier, so
+// the value a constructor reads with it is the value it decoded, and a mapping
+// or a query elsewhere can name it by the Go value rather than by a string that
+// a rename would leave behind.
+type Field[A, B any] struct {
+	erased erasedField[A]
+	// lookup reads the value out of an A, and whether it has one; set writes
+	// it into an A being built, and is nil for a field declared without a
+	// setter. They are kept typed so a projection can represent the field
+	// another way.
+	lookup func(A) (B, bool)
+	set    func(*A, B)
+}
+
+// ObjectField is a field of A, whatever the type of its value: what Struct
+// and Object take, since an object's fields hold different types.
+type ObjectField[A any] interface {
+	erasure() erasedField[A]
+}
+
+func (field Field[A, B]) erasure() erasedField[A] { return field.erased }
+
+// erasedField is a field with its value's type put away: what an object's
+// codec needs to write, read and describe it.
+type erasedField[A any] struct {
 	name     string
 	doc      string
 	node     structure.Node
@@ -22,8 +47,18 @@ type Field[A any] struct {
 	computed bool
 	fallback structure.Default
 	fault    error
-	encode   func(A, Sink) error
-	decode   func(*A, Source) error
+	// key is the field's identity, shared by every copy a modifier makes.
+	key *fieldKey
+	// literalName says the name was given exactly, by a projection, and is
+	// not respelled by a format's naming strategy.
+	literalName bool
+	encode      func(A, Sink) error
+	// decode writes the field into an A being built. It is nil for a field
+	// declared without a setter, which only Object can use.
+	decode func(*A, Source) error
+	// read decodes the field's value alone, and whether there is one, for
+	// Object to hand to a constructor.
+	read func(Source) (slot, bool, error)
 	// present reports whether an optional field has a value to write. It is
 	// nil for a required field, which always has one.
 	present func(A) bool
@@ -33,28 +68,54 @@ type Field[A any] struct {
 	derivable func(A) bool
 }
 
+// fieldKey is what makes two copies of a field the same field. It has a
+// member so that two keys are two allocations: Go may give every allocation of
+// a zero-sized type the same address.
+type fieldKey struct{ name string }
+
 // FieldOf describes a required field.
+//
+// The setter is for Struct, which builds an A by setting its fields, and is
+// left out for Object, which builds one through a constructor. It is variadic
+// only so that it can be left out: more than one setter is refused.
 func FieldOf[A, B any](
 	name string,
 	shape Schema[B],
 	get func(A) B,
-	set func(*A, B),
-) Field[A] {
-	return Field[A]{
+	set ...func(*A, B),
+) Field[A, B] {
+	field := erasedField[A]{
 		name:  name,
 		node:  shape.node,
 		fault: Validate(shape),
+		key:   &fieldKey{name: name},
 		encode: func(value A, into Sink) error {
 			return Encode(shape, get(value), into)
 		},
-		decode: func(target *A, from Source) error {
+		read: func(from Source) (slot, bool, error) {
+			value, err := Decode(shape, from)
+			return typedSlot[B]{value: value}, true, err
+		},
+	}
+	switch len(set) {
+	case 0:
+	case 1:
+		assign := set[0]
+		field.decode = func(target *A, from Source) error {
 			value, err := Decode(shape, from)
 			if err != nil {
 				return err
 			}
-			set(target, value)
+			assign(target, value)
 			return nil
-		},
+		}
+	default:
+		field.fault = fail("a field has at most one setter", nil)
+	}
+	return Field[A, B]{
+		erased: field,
+		lookup: func(value A) (B, bool) { return get(value), true },
+		set:    firstSetter(set),
 	}
 }
 
@@ -63,18 +124,19 @@ func FieldOf[A, B any](
 // The getter reports whether the value is present, so absence is a decision the
 // program makes rather than a zero value the schema has to guess about: an
 // empty string that is meant to be sent is not the same as a field that is not
-// there.
+// there. The setter is optional for the reason it is in FieldOf.
 func OptionalFieldOf[A, B any](
 	name string,
 	shape Schema[B],
 	get func(A) (B, bool),
-	set func(*A, B),
-) Field[A] {
-	return Field[A]{
+	set ...func(*A, B),
+) Field[A, B] {
+	field := erasedField[A]{
 		name:     name,
 		node:     shape.node,
 		optional: true,
 		fault:    Validate(shape),
+		key:      &fieldKey{name: name},
 		present: func(value A) bool {
 			_, ok := get(value)
 			return ok
@@ -86,150 +148,40 @@ func OptionalFieldOf[A, B any](
 			}
 			return Encode(shape, member, into)
 		},
-		decode: func(target *A, from Source) error {
+		read: func(from Source) (slot, bool, error) {
 			absent, err := from.Null()
-			if err != nil {
-				return err
+			if err != nil || absent {
+				return nil, false, err
 			}
-			if absent {
-				return nil
+			value, err := Decode(shape, from)
+			return typedSlot[B]{value: value}, true, err
+		},
+	}
+	switch len(set) {
+	case 0:
+	case 1:
+		assign := set[0]
+		field.decode = func(target *A, from Source) error {
+			absent, err := from.Null()
+			if err != nil || absent {
+				return err
 			}
 			value, err := Decode(shape, from)
 			if err != nil {
 				return err
 			}
-			set(target, value)
+			assign(target, value)
 			return nil
-		},
-	}
-}
-
-// WithDescription attaches prose a projection can carry into its output.
-func (field Field[A]) WithDescription(doc string) Field[A] {
-	field.doc = doc
-	return field
-}
-
-// WithNumber gives the field a number, for a wire that identifies fields by
-// number rather than by name.
-//
-// It is a modifier and not a parameter of FieldOf because most schemas never
-// meet such a wire, and a number every declaration had to carry would be noise
-// in all of them. Where one is needed it is required rather than derived: a
-// number is what protobuf's compatibility rests on, so the description is where
-// it belongs and declaration order is not a stable substitute.
-func (field Field[A]) WithNumber(number int) Field[A] {
-	if number < 1 {
-		field.fault = fail("a field number is at least 1", nil)
-		return field
-	}
-	field.number = number
-	return field
-}
-
-// Identity marks the field that distinguishes one of these from another.
-//
-// A projection to storage makes it the key. A derived update shape leaves it
-// out, because a key selects the row rather than being part of the row's new
-// value. An object with one is an entity in its own right; an object without
-// one is a value belonging to whatever holds it.
-func (field Field[A]) Identity() Field[A] {
-	field.identity = true
-	return field
-}
-
-// Computed marks a field whose value comes from somewhere other than the
-// caller: a default, a trigger, a derivation.
-//
-// It is left out of every derived shape a caller supplies, because asking for a
-// value that will be overwritten is asking a question with no answer.
-//
-// Compose it with Identity for a key the database generates, and use Identity
-// alone for one the application generates. That composition is the distinction
-// other libraries spell with two separate concepts.
-func (field Field[A]) Computed() Field[A] {
-	field.computed = true
-	return field
-}
-
-// WithDefault says what the field holds when nobody gives it a value.
-//
-// The value is a dynamic.Value rather than a Go value because a description
-// need not have a Go type at all, and because every projection already knows
-// how to write one.
-//
-// It is separate from Computed, which says the value is not the caller's. A
-// field can have a default and still be the caller's to give -- that is what a
-// default *is* -- and a computed field with no default is a projection to
-// storage's problem rather than a declaration mistake, so the two are declared
-// separately and each says its own thing.
-func (field Field[A]) WithDefault(value dynamic.Value) Field[A] {
-	field.fallback = structure.DefaultValue{Value: value}
-	return field
-}
-
-// WithDefaultNow says the field holds the moment the row is written.
-//
-// Its own method rather than a value passed to WithDefault, because it is an
-// expression and not a value: there is no instant to put in a description that
-// would still be the right one when the row is written.
-func (field Field[A]) WithDefaultNow() Field[A] {
-	field.fallback = structure.DefaultNow{}
-	return field
-}
-
-// Optional marks a field that may be absent.
-//
-// It applies to a field whose presence is answerable: one describing a shape,
-// where absence is the member not being there, and one already built by
-// OptionalFieldOf. A field bound to a Go type with FieldOf cannot be made
-// optional this way, because its getter returns a value and not a value and
-// whether there is one -- and absence is a decision the program makes rather
-// than a zero value the schema guesses at. That is why OptionalFieldOf takes a
-// different getter rather than this taking none.
-func (field Field[A]) Optional() Field[A] {
-	switch {
-	case field.present != nil:
-		field.optional = true
-	case field.derivable != nil:
-		field.present = field.derivable
-		field.optional = true
+		}
 	default:
-		field.fault = fail(
-			"a bound field states presence in its getter; use OptionalFieldOf", nil)
-		return field
+		field.fault = fail("a field has at most one setter", nil)
 	}
-	return field.tolerateAbsence()
+	return Field[A, B]{erased: field, lookup: get, set: firstSetter(set)}
 }
 
-// tolerateAbsence is what makes a field optional on the way *in* as well as
-// out.
-//
-// Saying a field is optional used to change only the description and the
-// encoding: a decoder still demanded a value, so a source that answered with an
-// explicit absence -- a JSON null, a SQL NULL -- was refused by the field that
-// had just declared it could be missing. Optionality that holds in one
-// direction is not optionality, and the shape of the bug was that a projection
-// to storage said the column was nullable while the description could not read
-// one back.
-//
-// OptionalFieldOf does not come through here: it states absence in its getter
-// and consults Null in its own decoder, so wrapping it again would consume the
-// absence twice.
-func (field Field[A]) tolerateAbsence() Field[A] {
-	inner := field.decode
-	if inner == nil {
-		return field
+func firstSetter[A, B any](set []func(*A, B)) func(*A, B) {
+	if len(set) == 0 {
+		return nil
 	}
-	field.decode = func(target *A, from Source) error {
-		absent, err := from.Null()
-		if err != nil {
-			return err
-		}
-		if absent {
-			return nil
-		}
-		return inner(target, from)
-	}
-	return field
+	return set[0]
 }

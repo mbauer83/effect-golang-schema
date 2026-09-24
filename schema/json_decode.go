@@ -10,23 +10,26 @@ import (
 	"errors"
 	"io"
 	"time"
+
+	"github.com/mbauer83/effect-golang-schema/schema/naming"
 )
 
 // DecodeJSON reads a value from JSON.
-func DecodeJSON[A any](schema Schema[A], document []byte) (A, error) {
-	return DecodeJSONFrom(schema, bytes.NewReader(document))
+func DecodeJSON[A any](schema Schema[A], document []byte, options ...JSONOption) (A, error) {
+	return DecodeJSONFrom(schema, bytes.NewReader(document), options...)
 }
 
 // DecodeJSONFrom reads a value from a JSON stream, which is what a request body
 // wants.
-func DecodeJSONFrom[A any](schema Schema[A], from io.Reader) (A, error) {
+func DecodeJSONFrom[A any](schema Schema[A], from io.Reader, options ...JSONOption) (A, error) {
 	decoder := jsontext.NewDecoder(from)
-	return Decode(schema, &jsonSource{decoder: decoder})
+	return Decode(schema, &jsonSource{decoder: decoder, strategy: jsonChoices(options).strategy})
 }
 
 // jsonSource answers a schema's reads from JSON tokens.
 type jsonSource struct {
-	decoder *jsontext.Decoder
+	decoder  *jsontext.Decoder
+	strategy naming.Strategy
 }
 
 func (source *jsonSource) Text() (string, error) {

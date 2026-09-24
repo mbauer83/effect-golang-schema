@@ -50,6 +50,10 @@ type Schema[A any] struct {
 	// place where things go wrong. The mistake is reported by Validate, and by
 	// the first attempt to use the schema.
 	fault error
+	// object is an object schema's fields, kept so that a projection of it --
+	// Omit, Rename, Represent -- can be built from them. It is nil for every
+	// other schema.
+	object *objectParts[A]
 }
 
 // Structure returns the description a projection walks.
@@ -120,10 +124,12 @@ func (schema Schema[A]) WithName(name string) Schema[A] {
 	switch shape := schema.node.(type) {
 	case structure.Object:
 		shape.Name = name
-		return of(shape, schema.encode, schema.decode)
+		schema.node = shape
+		return schema
 	case structure.Union:
 		shape.Name = name
-		return of(shape, schema.encode, schema.decode)
+		schema.node = shape
+		return schema
 	default:
 		return schema
 	}
@@ -134,10 +140,12 @@ func (schema Schema[A]) WithDescription(doc string) Schema[A] {
 	switch shape := schema.node.(type) {
 	case structure.Object:
 		shape.Description = doc
-		return of(shape, schema.encode, schema.decode)
+		schema.node = shape
+		return schema
 	case structure.Union:
 		shape.Description = doc
-		return of(shape, schema.encode, schema.decode)
+		schema.node = shape
+		return schema
 	default:
 		return schema
 	}

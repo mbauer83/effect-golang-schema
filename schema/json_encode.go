@@ -5,6 +5,8 @@ import (
 	"encoding/json/jsontext"
 	"io"
 	"time"
+
+	"github.com/mbauer83/effect-golang-schema/schema/naming"
 )
 
 // The JSON format, over the standard library's token API. The schema drives the
@@ -12,9 +14,9 @@ import (
 // intermediate tree on its way to or from the wire.
 
 // EncodeJSON writes a value as JSON.
-func EncodeJSON[A any](schema Schema[A], value A) ([]byte, error) {
+func EncodeJSON[A any](schema Schema[A], value A, options ...JSONOption) ([]byte, error) {
 	var buffer bytes.Buffer
-	if err := EncodeJSONTo(schema, value, &buffer); err != nil {
+	if err := EncodeJSONTo(schema, value, &buffer, options...); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
@@ -22,9 +24,10 @@ func EncodeJSON[A any](schema Schema[A], value A) ([]byte, error) {
 
 // EncodeJSONTo writes a value as JSON to a writer, which is what a response
 // body wants: no buffer the size of the document.
-func EncodeJSONTo[A any](schema Schema[A], value A, to io.Writer) error {
+func EncodeJSONTo[A any](schema Schema[A], value A, to io.Writer, options ...JSONOption) error {
 	encoder := jsontext.NewEncoder(to)
-	if err := Encode(schema, value, &jsonSink{encoder: encoder}); err != nil {
+	sink := &jsonSink{encoder: encoder, strategy: jsonChoices(options).strategy}
+	if err := Encode(schema, value, sink); err != nil {
 		return err
 	}
 	return nil
@@ -32,7 +35,8 @@ func EncodeJSONTo[A any](schema Schema[A], value A, to io.Writer) error {
 
 // jsonSink writes the calls a schema makes as JSON tokens.
 type jsonSink struct {
-	encoder *jsontext.Encoder
+	encoder  *jsontext.Encoder
+	strategy naming.Strategy
 }
 
 func (sink *jsonSink) Text(value string) error {

@@ -34,7 +34,7 @@ func dynamicScalar(shape structure.Scalar) Schema[dynamic.Value] {
 }
 
 func dynamicObject(shape structure.Object) Schema[dynamic.Value] {
-	fields := make([]Field[dynamic.Value], 0, len(shape.Fields))
+	fields := make([]ObjectField[dynamic.Value], 0, len(shape.Fields))
 	for _, member := range shape.Fields {
 		field := DynamicField(member.Name, Dynamic(member.Node)).WithDescription(member.Description)
 		if member.Optional {

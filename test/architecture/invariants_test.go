@@ -15,10 +15,12 @@ import (
 // codec, a JSON Schema projection and -- in another module -- a set of database
 // tables, and none of those may reach back into it.
 var mayImport = map[string][]string{
-	"schema":            {"schema/structure", "schema/dynamic"},
-	"schema/structure":  {"schema/dynamic"},
+	"schema":            {"schema/structure", "schema/dynamic", "schema/naming"},
+	"schema/structure":  {"schema/dynamic", "schema/naming"},
 	"schema/dynamic":    {},
+	"schema/naming":     {},
 	"schema/jsonschema": {"schema/structure"},
+	"schema/typescript": {"schema/structure"},
 	"schema/protobuf":   {"schema", "schema/structure", "schema/dynamic"},
 	"schema/variant":    {"schema/structure"},
 	"schemagen":         {"schema", "schema/structure"},

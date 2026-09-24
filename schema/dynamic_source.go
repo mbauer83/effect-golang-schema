@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mbauer83/effect-golang-schema/schema/dynamic"
+	"github.com/mbauer83/effect-golang-schema/schema/naming"
 )
 
 // dynamicSource reads a value as a schema pulls it.
@@ -19,7 +20,14 @@ import (
 // members over to be asked about in turn.
 type dynamicSource struct {
 	stack []dynamic.Value
+	// strategy is how the names in the value are spelled: a tagged union
+	// re-reads a buffered document through a dynamicSource, and its variant has
+	// to find its members spelled as the document spelled them.
+	strategy naming.Strategy
 }
+
+// NamingStrategy is how the value's member names are spelled.
+func (source *dynamicSource) NamingStrategy() naming.Strategy { return source.strategy }
 
 func (source *dynamicSource) take() (dynamic.Value, error) {
 	if len(source.stack) == 0 {

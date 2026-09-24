@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/mbauer83/effect-golang-schema/schema/dynamic"
+	"github.com/mbauer83/effect-golang-schema/schema/naming"
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
@@ -41,13 +42,14 @@ func TaggedUnion[A any](name string, discriminator string, variants ...Variant[A
 	for _, variant := range variants {
 		byName[variant.name] = variant
 	}
+	tag := &spelledName{name: discriminator}
 	return of[A](
 		node,
 		func(value A, into Sink) error {
-			return encodeTagged(value, discriminator, variants, into)
+			return encodeTagged(value, tag.under(sinkStrategy(into)), variants, into)
 		},
 		func(from Source) (A, error) {
-			return decodeTagged[A](from, discriminator, byName)
+			return decodeTagged[A](from, tag.under(sourceStrategy(from)), byName)
 		},
 	)
 }
@@ -121,6 +123,10 @@ func (sink *tagSink) BeginObject() error {
 	return sink.Sink.Text(sink.value)
 }
 
+// NamingStrategy is the strategy of the sink underneath, which the variant's
+// own members are spelled by as well.
+func (sink *tagSink) NamingStrategy() naming.Strategy { return sinkStrategy(sink.Sink) }
+
 func (sink *tagSink) EndObject() error {
 	sink.depth--
 	return sink.Sink.EndObject()
@@ -160,7 +166,8 @@ func decodeTagged[A any](
 	// The name is the union's, not the variant's, so the variant reads the
 	// object it would have written: its own fields and nothing else.
 	value, err := variant.decode(&dynamicSource{
-		stack: []dynamic.Value{omit(object, discriminator)},
+		stack:    []dynamic.Value{omit(object, discriminator)},
+		strategy: sourceStrategy(from),
 	})
 	if err != nil {
 		return zero, within(tag, err)

@@ -75,13 +75,15 @@ func dynamicCodec(node structure.Node) Schema[dynamic.Value] {
 // It is named for what it returns, as FieldOf is. A third word for a field --
 // a member, an entry -- would be one more thing to learn about something the
 // reader already knows.
-func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
+func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value, dynamic.Value] {
 	codec := Dynamic(shape.Structure())
 	if fault := Validate(shape); fault != nil {
-		return Field[dynamic.Value]{name: name, node: shape.Structure(), fault: fault}
+		return Field[dynamic.Value, dynamic.Value]{erased: erasedField[dynamic.Value]{
+			name: name, node: shape.Structure(), fault: fault, key: &fieldKey{name: name}}}
 	}
-	return Field[dynamic.Value]{
+	return Field[dynamic.Value, dynamic.Value]{erased: erasedField[dynamic.Value]{
 		name:      name,
+		key:       &fieldKey{name: name},
 		node:      shape.Structure(),
 		fault:     Validate(codec),
 		derivable: func(value dynamic.Value) bool { return hasMember(value, name) },
@@ -100,7 +102,14 @@ func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value] {
 			*target = withMember(*target, name, value)
 			return nil
 		},
-	}
+		read: func(from Source) (slot, bool, error) {
+			value, err := Decode(codec, from)
+			return typedSlot[dynamic.Value]{value: value}, true, err
+		},
+	}, lookup: func(value dynamic.Value) (dynamic.Value, bool) { return memberOf(value, name) },
+		set: func(target *dynamic.Value, member dynamic.Value) {
+			*target = withMember(*target, name, member)
+		}}
 }
 
 // DynamicVariant declares a variant of a described union: a name and a
