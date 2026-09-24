@@ -40,6 +40,15 @@ func dynamicObject(shape structure.Object) Schema[dynamic.Value] {
 		if member.Optional {
 			field = field.Optional()
 		}
+		if member.Identity {
+			field = field.Identity()
+		}
+		if member.Unique {
+			field = field.Unique()
+		}
+		if member.Computed {
+			field = field.Computed()
+		}
 		fields = append(fields, field)
 	}
 	return Struct[dynamic.Value](shape.Name, fields...).WithDescription(shape.Description)

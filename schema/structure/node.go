@@ -103,6 +103,10 @@ type Field struct {
 	// update shape leaves it out, because a key is what selects the row rather
 	// than something the row's new value contains.
 	Identity bool
+	// Unique says no two values have the same one: one account per email.
+	// A rule about all values rather than one, so only storage can keep it,
+	// and a projection to storage makes it a unique index.
+	Unique bool
 	// Computed says the value comes from somewhere other than the caller: a
 	// default, a trigger, a derivation. It is left out of every shape a caller
 	// supplies, because asking for a value that will be overwritten is asking

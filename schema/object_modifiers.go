@@ -42,6 +42,14 @@ func (field Field[A, B]) Identity() Field[A, B] {
 	return field
 }
 
+// Unique marks a field no two values share: one account per email. It is a
+// rule about all values rather than about one, which only storage can keep, so
+// the domain states it and a mapping to storage enforces it.
+func (field Field[A, B]) Unique() Field[A, B] {
+	field.erased.unique = true
+	return field
+}
+
 // Computed marks a field whose value comes from somewhere other than the
 // caller: a default, a trigger, a derivation.
 //

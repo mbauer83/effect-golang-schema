@@ -23,6 +23,7 @@ func describeFields[A any](fields []erasedField[A]) []structure.Field {
 			Optional:    field.optional,
 			Number:      field.number,
 			Identity:    field.identity,
+			Unique:      field.unique,
 			Computed:    field.computed,
 			Default:     field.fallback,
 		})

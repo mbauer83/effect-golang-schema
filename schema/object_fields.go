@@ -44,6 +44,7 @@ type erasedField[A any] struct {
 	optional bool
 	number   int
 	identity bool
+	unique   bool
 	computed bool
 	fallback structure.Default
 	fault    error
