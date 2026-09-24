@@ -142,7 +142,7 @@ func TestATaggedUnionsTagAndItsVariantsMembersFollowTheStrategy(t *testing.T) {
 }
 
 func TestARespelledDescriptionSaysWhatTheCodecWrites(t *testing.T) {
-	spelled := structure.Spelled(viewingSchema.Structure(), naming.CamelCase).(structure.Object)
+	spelled := structure.Spell(viewingSchema.Structure(), naming.CamelCase).(structure.Object)
 	names := []string{spelled.Fields[0].Name, spelled.Fields[1].Name}
 	if !reflect.DeepEqual(names, []string{"filmId", "watchedAt"}) {
 		t.Fatalf("expected the members respelled, got %v", names)
@@ -154,14 +154,14 @@ func TestARespelledDescriptionSaysWhatTheCodecWrites(t *testing.T) {
 
 func TestARespelledDescriptionKeepsANameGivenExactly(t *testing.T) {
 	renamed := viewingSchema.Rename(viewingFilmID, "tmdb_id")
-	spelled := structure.Spelled(renamed.Structure(), naming.CamelCase).(structure.Object)
+	spelled := structure.Spell(renamed.Structure(), naming.CamelCase).(structure.Object)
 	if spelled.Fields[0].Name != "tmdb_id" || spelled.Fields[1].Name != "watchedAt" {
 		t.Fatalf("expected the exact name kept and the other respelled, got %+v", spelled.Fields)
 	}
 }
 
 func TestASpelledSchemaSpellsItsNamesInEveryFormat(t *testing.T) {
-	stored := viewingSchema.Rename(viewingFilmID, "tmdb_id").Spelled(naming.KebabCase)
+	stored := viewingSchema.Rename(viewingFilmID, "tmdb_id").WithNaming(naming.KebabCase)
 
 	encoded, err := schema.EncodeJSON(stored, viewing{FilmID: 603, WatchedAt: "today"},
 		schema.MemberNaming(naming.CamelCase))
@@ -187,7 +187,7 @@ func TestASpelledSchemaSpellsItsNamesInEveryFormat(t *testing.T) {
 }
 
 func TestASpelledTaggedUnionStillReadsBack(t *testing.T) {
-	stored := edgeSchema.Spelled(naming.CamelCase)
+	stored := edgeSchema.WithNaming(naming.CamelCase)
 	encoded, err := schema.EncodeJSON(stored, corner{CornerRadius: 2})
 	if err != nil {
 		t.Fatal(err)

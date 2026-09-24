@@ -6,7 +6,7 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/naming"
 )
 
-// Spelled is node with every object member, and every tagged union's tag
+// Spell is node with every object member, and every tagged union's tag
 // field, spelled by strategy: the description a projection of a format with
 // that strategy reads, so that a document, a TypeScript type and a table say
 // the same names as the codec that writes them.
@@ -16,7 +16,7 @@ import (
 // the names of objects and unions, which a projection spells by its own rules.
 // A reference is respelled when it is resolved, so a recursive description
 // stays finite.
-func Spelled(node Node, strategy naming.Strategy) Node {
+func Spell(node Node, strategy naming.Strategy) Node {
 	if strategy.IsLiteral() {
 		return node
 	}
@@ -27,7 +27,7 @@ func Spelled(node Node, strategy naming.Strategy) Node {
 			if !field.Exact {
 				field.Name = strategy.Spell(field.Name)
 			}
-			field.Node = Spelled(field.Node, strategy)
+			field.Node = Spell(field.Node, strategy)
 			fields[index] = field
 		}
 		node.Fields = fields
@@ -35,7 +35,7 @@ func Spelled(node Node, strategy naming.Strategy) Node {
 	case Union:
 		variants := make([]Variant, len(node.Variants))
 		for index, variant := range node.Variants {
-			variant.Node = Spelled(variant.Node, strategy)
+			variant.Node = Spell(variant.Node, strategy)
 			variants[index] = variant
 		}
 		node.Variants = variants
@@ -44,17 +44,17 @@ func Spelled(node Node, strategy naming.Strategy) Node {
 		}
 		return node
 	case Sequence:
-		node.Element = Spelled(node.Element, strategy)
+		node.Element = Spell(node.Element, strategy)
 		return node
 	case Mapping:
-		node.Value = Spelled(node.Value, strategy)
+		node.Value = Spell(node.Value, strategy)
 		return node
 	case Nullable:
-		node.Inner = Spelled(node.Inner, strategy)
+		node.Inner = Spell(node.Inner, strategy)
 		return node
 	case Reference:
 		if resolve := node.Resolve; resolve != nil {
-			node.Resolve = func() Node { return Spelled(resolve(), strategy) }
+			node.Resolve = func() Node { return Spell(resolve(), strategy) }
 		}
 		return node
 	default:

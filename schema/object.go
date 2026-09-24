@@ -87,26 +87,26 @@ func assemble[A any](node structure.Object, parts *objectParts[A]) Schema[A] {
 	built := of[A](
 		node,
 		func(value A, into Sink) error {
-			spelled := names.under(sinkStrategy(into))
-			if spelled.fault != nil {
-				return spelled.fault
+			spelling := names.under(sinkStrategy(into))
+			if spelling.fault != nil {
+				return spelling.fault
 			}
-			return encodeFields(value, parts.fields, spelled.names, into)
+			return encodeFields(value, parts.fields, spelling.names, into)
 		},
 		func(from Source) (A, error) {
 			var zero A
-			spelled := names.under(sourceStrategy(from))
+			spelling := names.under(sourceStrategy(from))
 			switch {
-			case spelled.fault != nil:
-				return zero, spelled.fault
+			case spelling.fault != nil:
+				return zero, spelling.fault
 			case parts.omitted && parts.construct == nil:
 				return zero, fail("this projection of a Struct leaves members out, and "+
 					"nothing would decide what they hold; read what it writes as a "+
 					"description, with Dynamic, or describe the type with Object", nil)
 			case parts.construct == nil:
-				return decodeFields[A](from, spelled.byName, spelled.required)
+				return decodeFields[A](from, spelling.byName, spelling.required)
 			}
-			values, err := readValues(from, spelled.byName, spelled.required)
+			values, err := readValues(from, spelling.byName, spelling.required)
 			if err != nil {
 				return zero, err
 			}

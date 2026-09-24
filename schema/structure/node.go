@@ -90,7 +90,7 @@ type Field struct {
 	Description string
 	Node        Node
 	// Exact says the name was given exactly, by a projection, and is not
-	// respelled by a naming strategy: Spelled leaves it as it is, as the
+	// respelled by a naming strategy: Spell leaves it as it is, as the
 	// codecs do.
 	Exact bool
 	// Optional says the field may be absent.

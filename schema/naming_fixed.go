@@ -8,7 +8,7 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
-// Spelled is this schema with every member name spelled by strategy, in every
+// WithNaming is this schema with every member name spelled by strategy, in every
 // format: its description is respelled, and whatever sink or source it meets
 // is told to spell names that way, so nested objects and tagged unions follow.
 //
@@ -19,16 +19,16 @@ import (
 //
 // Projections are made before spelling: the spelled schema is the end of a
 // chain, and Omit, Rename or Represent on it are refused.
-func (schema Schema[A]) Spelled(strategy naming.Strategy) Schema[A] {
+func (schema Schema[A]) WithNaming(strategy naming.Strategy) Schema[A] {
 	if strategy.IsLiteral() {
 		return schema
 	}
 	if fault := Validate(schema); fault != nil {
-		return faultySchema[A](structure.Spelled(schema.node, strategy), fault)
+		return faultySchema[A](structure.Spell(schema.node, strategy), fault)
 	}
 	inner := schema
 	return of(
-		structure.Spelled(schema.node, strategy),
+		structure.Spell(schema.node, strategy),
 		func(value A, into Sink) error {
 			return Encode(inner, value, &namingSink{Sink: into, strategy: strategy})
 		},

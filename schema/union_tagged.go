@@ -42,7 +42,7 @@ func TaggedUnion[A any](name string, discriminator string, variants ...Variant[A
 	for _, variant := range variants {
 		byName[variant.name] = variant
 	}
-	tag := &spelledName{name: discriminator}
+	tag := &nameSpelling{name: discriminator}
 	return of[A](
 		node,
 		func(value A, into Sink) error {

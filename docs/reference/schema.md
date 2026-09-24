@@ -116,7 +116,7 @@ that way:
 
 ```go
 schema.EncodeJSON(FilmSchema, film, schema.MemberNaming(naming.CamelCase))
-structure.Spelled(FilmSchema.Structure(), naming.CamelCase) // for a projection
+structure.Spell(FilmSchema.Structure(), naming.CamelCase)   // for a projection
 ```
 
 - **Strategies:** `naming.Literal` (the default: as declared), `CamelCase`,
@@ -129,7 +129,7 @@ structure.Spelled(FilmSchema.Structure(), naming.CamelCase) // for a projection
 - **Reading is strict.** A document read with a strategy must spell its members
   that way; a member spelled otherwise is unknown, as a misspelt one would be.
 - **Exact names stay exact.** A name given with `Rename` is written as given
-  under every strategy, and `Spelled` leaves it as it is.
+  under every strategy, and `structure.Spell` leaves it as it is.
 - **Two fields a strategy spells alike** are refused when a value is written or
   read with that strategy, naming both.
 - **Data is never respelled:** a map's keys, and a union's variant names, which

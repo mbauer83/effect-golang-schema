@@ -33,10 +33,10 @@ func sourceStrategy(from Source) naming.Strategy {
 	return naming.Literal
 }
 
-// spelledFields are an object's fields under one strategy: each field's name
+// fieldSpelling are an object's fields under one strategy: each field's name
 // in declaration order, the fields by name for a decoder, and the names a
 // decoder requires.
-type spelledFields[A any] struct {
+type fieldSpelling[A any] struct {
 	names    []string
 	byName   map[string]erasedField[A]
 	required []string
@@ -49,28 +49,28 @@ type spelledFields[A any] struct {
 // format with that strategy meets the object, rather than once per value.
 type memberNames[A any] struct {
 	fields  []erasedField[A]
-	literal *spelledFields[A]
+	literal *fieldSpelling[A]
 	// spelled holds a *spelledFields[A] per strategy name.
-	spelled sync.Map
+	byStrategy sync.Map
 }
 
 func newMemberNames[A any](fields []erasedField[A]) *memberNames[A] {
 	return &memberNames[A]{fields: fields, literal: spellFields(fields, naming.Literal)}
 }
 
-func (names *memberNames[A]) under(strategy naming.Strategy) *spelledFields[A] {
+func (names *memberNames[A]) under(strategy naming.Strategy) *fieldSpelling[A] {
 	if strategy.IsLiteral() {
 		return names.literal
 	}
-	if known, found := names.spelled.Load(strategy.Name()); found {
-		return known.(*spelledFields[A])
+	if known, found := names.byStrategy.Load(strategy.Name()); found {
+		return known.(*fieldSpelling[A])
 	}
-	spelled, _ := names.spelled.LoadOrStore(strategy.Name(), spellFields(names.fields, strategy))
-	return spelled.(*spelledFields[A])
+	spelling, _ := names.byStrategy.LoadOrStore(strategy.Name(), spellFields(names.fields, strategy))
+	return spelling.(*fieldSpelling[A])
 }
 
-func spellFields[A any](fields []erasedField[A], strategy naming.Strategy) *spelledFields[A] {
-	spelled := &spelledFields[A]{
+func spellFields[A any](fields []erasedField[A], strategy naming.Strategy) *fieldSpelling[A] {
+	spelling := &fieldSpelling[A]{
 		names:  make([]string, len(fields)),
 		byName: make(map[string]erasedField[A], len(fields)),
 	}
@@ -79,34 +79,34 @@ func spellFields[A any](fields []erasedField[A], strategy naming.Strategy) *spel
 		if !field.literalName {
 			name = strategy.Spell(field.name)
 		}
-		if earlier, taken := spelled.byName[name]; taken && spelled.fault == nil {
-			spelled.fault = fail("fields "+earlier.name+" and "+field.name+
+		if earlier, taken := spelling.byName[name]; taken && spelling.fault == nil {
+			spelling.fault = fail("fields "+earlier.name+" and "+field.name+
 				" are both "+name+" in "+strategy.Name(), nil)
 		}
-		spelled.names[index] = name
-		spelled.byName[name] = field
+		spelling.names[index] = name
+		spelling.byName[name] = field
 		if !field.optional {
-			spelled.required = append(spelled.required, name)
+			spelling.required = append(spelling.required, name)
 		}
 	}
-	return spelled
+	return spelling
 }
 
-// spelledName is one name that is a member name, as each strategy spells it,
+// nameSpelling is one name that is a member name, as each strategy spells it,
 // spelled once per strategy: a tagged union's tag field.
-type spelledName struct {
+type nameSpelling struct {
 	name string
 	// spelled holds the name as a string per strategy name.
-	spelled sync.Map
+	byStrategy sync.Map
 }
 
-func (name *spelledName) under(strategy naming.Strategy) string {
+func (name *nameSpelling) under(strategy naming.Strategy) string {
 	if strategy.IsLiteral() {
 		return name.name
 	}
-	if known, found := name.spelled.Load(strategy.Name()); found {
+	if known, found := name.byStrategy.Load(strategy.Name()); found {
 		return known.(string)
 	}
-	spelled, _ := name.spelled.LoadOrStore(strategy.Name(), strategy.Spell(name.name))
-	return spelled.(string)
+	spelling, _ := name.byStrategy.LoadOrStore(strategy.Name(), strategy.Spell(name.name))
+	return spelling.(string)
 }
