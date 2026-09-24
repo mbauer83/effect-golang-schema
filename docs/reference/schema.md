@@ -334,6 +334,7 @@ changed without a regeneration fails there rather than at the next request.
 | `Bool` | a boolean |
 | `Bytes` | an opaque byte string, base64 in a text format |
 | `Time` | an instant, RFC 3339 in a text format |
+| `Duration(unit, count)` | a length of time as a whole number of units, counted by `count`; a value that is not a whole number is refused rather than rounded |
 | `List(element)` | an ordered sequence; decodes to an empty slice, never nil |
 | `Map(value)` | string-keyed values; encoding sorts the keys |
 | `Nullable(inner)` | present and null, as a pointer -- not the same as an absent field |
