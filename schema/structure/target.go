@@ -1,0 +1,32 @@
+package structure
+
+// What a reference identifies.
+
+// Target is what a reference identifies: an object, by the field that is its
+// identity, and what becomes of the reference when the object goes.
+type Target struct {
+	// Object is the target object's name, as its description declares it.
+	Object string
+	// Key is the target's identity field, by its declared name.
+	Key string
+	// OnDelete is what deleting the target does to a value that refers to it.
+	OnDelete Deletion
+	// Table and Column are where the target is stored, once a mapping has
+	// said: empty in a domain description, which says nothing about tables.
+	Table  string
+	Column string
+}
+
+// Deletion is what deleting an object does to what refers to it.
+type Deletion int
+
+const (
+	// Restrict refuses to delete an object something still refers to: the
+	// default, because destroying data should be a decision someone states.
+	Restrict Deletion = iota
+	// Cascade deletes what refers to it as well.
+	Cascade
+	// SetNull empties the reference, which is only possible where it is
+	// optional.
+	SetNull
+)

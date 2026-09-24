@@ -106,7 +106,7 @@ func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value, dyna
 			value, err := Decode(codec, from)
 			return typedSlot[dynamic.Value]{value: value}, true, err
 		},
-	}, lookup: func(value dynamic.Value) (dynamic.Value, bool) { return memberOf(value, name) },
+	}, shape: codec, lookup: func(value dynamic.Value) (dynamic.Value, bool) { return memberOf(value, name) },
 		set: func(target *dynamic.Value, member dynamic.Value) {
 			*target = withMember(*target, name, member)
 		}}

@@ -68,6 +68,10 @@ type Scalar struct {
 	// they were declared. A projection that has keywords for them emits them;
 	// one that has none describes the kind alone, which is still true.
 	Constraints []Constraint
+	// Refers is the aggregate this value identifies, when it is a reference:
+	// a viewing's film, which the viewing holds by the film's identity. Nil
+	// for a value that identifies nothing else.
+	Refers *Target
 }
 
 // Object is a fixed set of named fields.

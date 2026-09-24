@@ -25,6 +25,9 @@ type Field[A, B any] struct {
 	// another way.
 	lookup func(A) (B, bool)
 	set    func(*A, B)
+	// shape is the field's own schema, as declared: what a reference to this
+	// field, as an identity, is written with.
+	shape Schema[B]
 }
 
 // ObjectField is a field of A, whatever the type of its value: what Struct
@@ -125,6 +128,7 @@ func FieldOf[A, B any](
 		erased: field,
 		lookup: func(value A) (B, bool) { return get(value), true },
 		set:    firstSetter(set),
+		shape:  shape,
 	}
 }
 
@@ -162,6 +166,7 @@ func FieldAt[A, B any](name string, shape Schema[B], at func(*A) *B) Field[A, B]
 		erased: field,
 		lookup: func(value A) (B, bool) { return *at(&value), true },
 		set:    func(target *A, value B) { *at(target) = value },
+		shape:  shape,
 	}
 }
 
@@ -222,7 +227,7 @@ func OptionalFieldOf[A, B any](
 	default:
 		field.fault = fail("a field has at most one setter", nil)
 	}
-	return Field[A, B]{erased: field, lookup: get, set: firstSetter(set)}
+	return Field[A, B]{erased: field, lookup: get, set: firstSetter(set), shape: shape}
 }
 
 func firstSetter[A, B any](set []func(*A, B)) func(*A, B) {
