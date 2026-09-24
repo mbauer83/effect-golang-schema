@@ -64,3 +64,6 @@ func (schema Schema[A]) WithTargets(resolve func(structure.Target) structure.Tar
 	schema.node = structure.WithTargets(schema.node, resolve)
 	return schema
 }
+
+// Shape is the field's own schema, as declared.
+func (field Field[A, B]) Shape() Schema[B] { return field.shape }
