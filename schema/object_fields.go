@@ -30,10 +30,16 @@ type Field[A, B any] struct {
 // ObjectField is a field of A, whatever the type of its value: what Struct
 // and Object take, since an object's fields hold different types.
 type ObjectField[A any] interface {
+	// Name is the field's name as it was declared, before any format spells
+	// it: what a mapping in another package refers to it by.
+	Name() string
 	erasure() erasedField[A]
 }
 
 func (field Field[A, B]) erasure() erasedField[A] { return field.erased }
+
+// Name is the field's name as it was declared, before any format spells it.
+func (field Field[A, B]) Name() string { return field.erased.name }
 
 // erasedField is a field with its value's type put away: what an object's
 // codec needs to write, read and describe it.
