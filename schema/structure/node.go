@@ -111,6 +111,10 @@ type Field struct {
 	// A rule about all values rather than one, so only storage can keep it,
 	// and a projection to storage makes it a unique index.
 	Unique bool
+	// UniqueKey names the unique key this field is one of: the fields of an
+	// object given the same name are unique together -- a title once per
+	// author -- and a projection to storage makes one unique index of them.
+	UniqueKey string
 	// Computed says the value comes from somewhere other than the caller: a
 	// default, a trigger, a derivation. It is left out of every shape a caller
 	// supplies, because asking for a value that will be overwritten is asking

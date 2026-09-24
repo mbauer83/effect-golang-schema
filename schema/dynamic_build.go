@@ -46,6 +46,9 @@ func dynamicObject(shape structure.Object) Schema[dynamic.Value] {
 		if member.Unique {
 			field = field.Unique()
 		}
+		if member.UniqueKey != "" {
+			field = field.UniqueTogether(member.UniqueKey)
+		}
 		if member.Computed {
 			field = field.Computed()
 		}

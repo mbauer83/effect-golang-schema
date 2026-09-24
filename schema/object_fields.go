@@ -54,9 +54,12 @@ type erasedField[A any] struct {
 	number   int
 	identity bool
 	unique   bool
-	computed bool
-	fallback structure.Default
-	fault    error
+	// uniqueKey names the unique key the field is one of, with the others
+	// given the same name.
+	uniqueKey string
+	computed  bool
+	fallback  structure.Default
+	fault     error
 	// key is the field's identity, shared by every copy a modifier makes.
 	key *fieldKey
 	// literalName says the name was given exactly, by a projection, and is

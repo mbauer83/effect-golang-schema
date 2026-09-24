@@ -50,6 +50,16 @@ func (field Field[A, B]) Unique() Field[A, B] {
 	return field
 }
 
+// UniqueTogether marks a field as one of several no two values share
+// together: the fields given the same key are unique as a whole -- a title
+// once per author -- where each alone is not. The key names the constraint a
+// mapping to storage makes, as Django's unique_together and SQL's named
+// unique constraints do.
+func (field Field[A, B]) UniqueTogether(key string) Field[A, B] {
+	field.erased.uniqueKey = key
+	return field
+}
+
 // Computed marks a field whose value comes from somewhere other than the
 // caller: a default, a trigger, a derivation.
 //
