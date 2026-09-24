@@ -6,6 +6,9 @@ import (
 	"github.com/mbauer83/effect-golang-schema/schema/structure"
 )
 
+// Deletion is what deleting a referenced object does to a reference to it.
+type Deletion = structure.Deletion
+
 // What deleting a referenced object does to a reference to it.
 const (
 	// Restrict refuses to delete an object something still refers to.
@@ -27,7 +30,7 @@ const (
 //	FilmRef: schema.FieldOf("film", schema.Ref(catalog.FilmSchema, catalog.FilmFields.ID), Viewing.Film)
 //
 // The identity must be target's own: a field it declares as its Identity.
-func Ref[T, ID any](target Schema[T], identity Field[T, ID], onDelete ...structure.Deletion) Schema[ID] {
+func Ref[T, ID any](target Schema[T], identity Field[T, ID], onDelete ...Deletion) Schema[ID] {
 	shape := identity.shape
 	parts, object, fault := target.projectable()
 	if fault != nil {
@@ -52,4 +55,12 @@ func Ref[T, ID any](target Schema[T], identity Field[T, ID], onDelete ...structu
 	scalar.Refers = &structure.Target{Object: object.Name, Key: identity.erased.name, OnDelete: deletion}
 	shape.node = scalar
 	return shape
+}
+
+// WithTargets is this schema with its references' targets passed through
+// resolve: the description a mapping gives, saying where each target is
+// stored. What is written and read is unchanged.
+func (schema Schema[A]) WithTargets(resolve func(structure.Target) structure.Target) Schema[A] {
+	schema.node = structure.WithTargets(schema.node, resolve)
+	return schema
 }

@@ -30,3 +30,48 @@ const (
 	// optional.
 	SetNull
 )
+
+// WithTargets is node with every reference's target passed through resolve,
+// deeply: what a mapping uses to say where each target is stored.
+func WithTargets(node Node, resolve func(Target) Target) Node {
+	switch node := node.(type) {
+	case Scalar:
+		if node.Refers != nil {
+			resolved := resolve(*node.Refers)
+			node.Refers = &resolved
+		}
+		return node
+	case Object:
+		fields := make([]Field, len(node.Fields))
+		for index, field := range node.Fields {
+			field.Node = WithTargets(field.Node, resolve)
+			fields[index] = field
+		}
+		node.Fields = fields
+		return node
+	case Union:
+		variants := make([]Variant, len(node.Variants))
+		for index, variant := range node.Variants {
+			variant.Node = WithTargets(variant.Node, resolve)
+			variants[index] = variant
+		}
+		node.Variants = variants
+		return node
+	case Sequence:
+		node.Element = WithTargets(node.Element, resolve)
+		return node
+	case Mapping:
+		node.Value = WithTargets(node.Value, resolve)
+		return node
+	case Nullable:
+		node.Inner = WithTargets(node.Inner, resolve)
+		return node
+	case Reference:
+		if inner := node.Resolve; inner != nil {
+			node.Resolve = func() Node { return WithTargets(inner(), resolve) }
+		}
+		return node
+	default:
+		return node
+	}
+}
