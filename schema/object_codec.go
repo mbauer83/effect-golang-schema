@@ -57,13 +57,13 @@ func encodeFields[A any](value A, fields []erasedField[A], names []string, into 
 		// An absent optional field is omitted rather than written as null.
 		// Omission is what a reader of the projection is told to expect, and it
 		// is what a document written by hand would do.
-		if field.present != nil && !field.present(value) {
+		if field.present != nil && !field.present(&value) {
 			continue
 		}
 		if err := into.FieldName(names[index]); err != nil {
 			return err
 		}
-		if err := field.encode(value, into); err != nil {
+		if err := field.encode(&value, into); err != nil {
 			return within(names[index], err)
 		}
 	}

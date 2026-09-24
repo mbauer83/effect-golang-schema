@@ -22,21 +22,16 @@ type Item struct {
 
 // ItemSchema describes Item. It is generated from its description.
 var ItemSchema = schema.Struct[Item]("Item",
-	schema.FieldOf("sku", schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")),
-		func(value Item) string { return value.Sku },
-		func(value *Item, field string) { value.Sku = field }).WithDescription("the stock-keeping unit, three letters and five digits"),
-	schema.FieldOf("onHand", schema.Uint16(),
-		func(value Item) uint16 { return value.OnHand },
-		func(value *Item, field uint16) { value.OnHand = field }).WithDescription("how many are on hand"),
-	schema.FieldOf("weightGrams", schema.Float32(),
-		func(value Item) float32 { return value.WeightGrams },
-		func(value *Item, field float32) { value.WeightGrams = field }).WithDescription("what one unit weighs"),
-	schema.FieldOf("id", schema.UUID(),
-		func(value Item) string { return value.ID },
-		func(value *Item, field string) { value.ID = field }),
-	schema.FieldOf("tags", schema.List(schema.Text()).Check(schema.MinItems[string](1)),
-		func(value Item) []string { return value.Tags },
-		func(value *Item, field []string) { value.Tags = field }),
+	schema.FieldAt("sku", schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")),
+		func(value *Item) *string { return &value.Sku }).WithDescription("the stock-keeping unit, three letters and five digits"),
+	schema.FieldAt("onHand", schema.Uint16(),
+		func(value *Item) *uint16 { return &value.OnHand }).WithDescription("how many are on hand"),
+	schema.FieldAt("weightGrams", schema.Float32(),
+		func(value *Item) *float32 { return &value.WeightGrams }).WithDescription("what one unit weighs"),
+	schema.FieldAt("id", schema.UUID(),
+		func(value *Item) *string { return &value.ID }),
+	schema.FieldAt("tags", schema.List(schema.Text()).Check(schema.MinItems[string](1)),
+		func(value *Item) *[]string { return &value.Tags }),
 	schema.OptionalFieldOf("note", schema.Text().Check(schema.MaxLength(200)),
 		func(value Item) (string, bool) {
 			var absent string
@@ -72,9 +67,8 @@ func (Received) isMovement() {}
 
 // ReceivedSchema describes Received. It is generated from its description.
 var ReceivedSchema = schema.Struct[Received]("Received",
-	schema.FieldOf("count", schema.Uint16(),
-		func(value Received) uint16 { return value.Count },
-		func(value *Received, field uint16) { value.Count = field }),
+	schema.FieldAt("count", schema.Uint16(),
+		func(value *Received) *uint16 { return &value.Count }),
 )
 
 // Shipped is generated from its description.
@@ -87,10 +81,8 @@ func (Shipped) isMovement() {}
 
 // ShippedSchema describes Shipped. It is generated from its description.
 var ShippedSchema = schema.Struct[Shipped]("Shipped",
-	schema.FieldOf("count", schema.Uint16(),
-		func(value Shipped) uint16 { return value.Count },
-		func(value *Shipped, field uint16) { value.Count = field }),
-	schema.FieldOf("to", schema.Hostname(),
-		func(value Shipped) string { return value.To },
-		func(value *Shipped, field string) { value.To = field }),
+	schema.FieldAt("count", schema.Uint16(),
+		func(value *Shipped) *uint16 { return &value.Count }),
+	schema.FieldAt("to", schema.Hostname(),
+		func(value *Shipped) *string { return &value.To }),
 )

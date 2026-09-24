@@ -4,8 +4,8 @@
 // be kept in agreement.
 //
 // A schema is written rather than derived. Go has neither Scala's implicit
-// derivation nor TypeScript's mapped types, so the fields of a struct are
-// declared with a getter and a setter:
+// derivation nor TypeScript's mapped types, so the fields of a plain struct are
+// declared by where they are:
 //
 //	type Book struct {
 //	    Title   string
@@ -13,13 +13,13 @@
 //	}
 //
 //	var BookSchema = schema.Struct[Book]("Book",
-//	    schema.FieldOf("title", schema.Text(),
-//	        func(book Book) string { return book.Title },
-//	        func(book *Book, title string) { book.Title = title }),
-//	    schema.FieldOf("authors", schema.List(schema.Text()),
-//	        func(book Book) []string { return book.Authors },
-//	        func(book *Book, authors []string) { book.Authors = authors }),
+//	    schema.FieldAt("title", schema.Text(), func(book *Book) *string { return &book.Title }),
+//	    schema.FieldAt("authors", schema.List(schema.Text()), func(book *Book) *[]string { return &book.Authors }),
 //	)
+//
+// A type with rules is described with Object instead, which reads each field
+// through the type's own getter and builds a value through its constructor, so
+// a decoded value is one the constructor made.
 //
 // That is more to write than a struct tag. It is also checked by the compiler,
 // works when the wire shape differs from the Go shape, and needs no reflection.
@@ -207,10 +207,10 @@ func TransformOrFail[A, B any](
 //
 //	var nodeSchema schema.Schema[Node]
 //	nodeSchema = schema.Struct[Node]("Node",
-//	    schema.FieldOf("label", schema.Text(), getLabel, setLabel),
-//	    schema.FieldOf("children",
+//	    schema.FieldAt("label", schema.Text(), func(node *Node) *string { return &node.Label }),
+//	    schema.FieldAt("children",
 //	        schema.List(schema.Suspend(func() schema.Schema[Node] { return nodeSchema })),
-//	        getChildren, setChildren),
+//	        func(node *Node) *[]Node { return &node.Children }),
 //	)
 //
 // The structure it contributes is a Reference, which is what makes a projection

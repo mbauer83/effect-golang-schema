@@ -7,31 +7,137 @@ one description rather than several that have to be kept in agreement.
 ## Writing one
 
 Go has neither Scala's implicit derivation nor TypeScript's mapped types, so a
-schema declares each field with its wire name, its shape, a getter and a setter:
+schema names each field: its wire name, its shape, and how the field is
+reached. For a plain struct, a field is reached by its address:
 
 ```go
 var BookSchema = schema.Struct[Book]("Book",
-    schema.FieldOf("title", schema.Text(),
-        func(book Book) string { return book.Title },
-        func(book *Book, title string) { book.Title = title }),
-    schema.FieldOf("authors", schema.List(schema.Text()),
-        func(book Book) []string { return book.Authors },
-        func(book *Book, authors []string) { book.Authors = authors }),
+    schema.FieldAt("title", schema.Text(),
+        func(book *Book) *string { return &book.Title }),
+    schema.FieldAt("authors", schema.List(schema.Text()),
+        func(book *Book) *[]string { return &book.Authors }),
 )
 ```
 
-The setter takes a pointer and the getter a value, so a struct is built from its
-zero value one field at a time. That avoids needing an N-argument constructor
-for every arity, and it is how a Go program builds a struct anyway.
+The accessor answers where the field is, which is both how it is read and how
+it is written, so a struct is built from its zero value one field at a time --
+which avoids needing an N-argument constructor for every arity, and is how a Go
+program builds a struct anyway.
+
+A member whose Go value is converted on its way to the wire is declared with
+`FieldOf`, which takes a getter and a setter instead:
+
+```go
+schema.FieldOf("tags", schema.Text(),
+    func(book Book) string { return strings.Join(book.Tags, ",") },
+    func(book *Book, tags string) { book.Tags = strings.Split(tags, ",") })
+```
+
+A type with rules -- unexported fields, a constructor that refuses -- is
+described with `Object` instead, which builds it through that constructor;
+see [a type built by its constructor](#a-type-built-by-its-constructor).
 
 This is more to write than a struct tag. It is also checked by the compiler,
 works when the wire shape differs from the Go shape, and needs no reflection.
 
-Write a schema this way for a Go type you already have — a domain type with
+Write a schema this way for a Go type you already have -- a domain type with
 methods, one from another package, one whose wire shape differs from its Go
 shape. Where the *description* is the source of truth instead, the struct and
 this schema are both [generated](#generating-the-go-types) from it, and what
 comes out is these same calls: one vocabulary, written or generated.
+
+## A type built by its constructor
+
+A domain type usually keeps its fields unexported, so that the one function
+that enforces its rules is the only way to make one. `Object` describes such a
+type without a second struct of the same members: each field is read through
+the type's own getter, and a decoded value is made by its constructor.
+
+```go
+var FilmFields = struct {
+    Title schema.Field[Film, string]
+    Year  schema.Field[Film, int]
+}{
+    Title: schema.FieldOf("title", schema.Text(), Film.Title),
+    Year:  schema.OptionalFieldOf("year", schema.Int(), Film.Year),
+}
+
+var FilmSchema = schema.Object("Film", func(values schema.Values) (Film, error) {
+    year, known := FilmFields.Year.Lookup(values)
+    return NewFilm(FilmFields.Title.Of(values), year, known)
+}, FilmFields.Title, FilmFields.Year)
+```
+
+- **A field is a typed handle.** `Of` answers its value as its own type, and
+  `Lookup` whether an optional one was present. The getter is often a method
+  value (`Film.Title`), and no setter is needed.
+- **A decoded value is one the constructor made.** Its refusal is the decoder's
+  refusal, with the path to the object, so a row an older version wrote or a
+  request that breaks a rule is refused where it is read.
+- **A constructor that reads a field the object does not declare is refused
+  when the schema is built**, not answered with a silent zero on every decode.
+- **The handles are how everything else names the fields**: the projections
+  below, and a mapping in another module, refer to `FilmFields.Title` rather
+  than to the string `"title"`, so a renamed field breaks the build.
+
+## Publishing an object under other terms
+
+A surface often publishes a domain type with members left out, named
+differently, or in another form. A projection says only what differs, and is
+still a `Schema[A]`:
+
+```go
+f := catalog.FilmFields
+var FilmShape = catalog.FilmSchema.
+    Omit(f.SyncedAt).
+    Represent(f.PosterPath, schema.Text(), posterURL, posterPath).
+    Rename(f.PosterPath, "poster").
+    Describe(f.PosterPath, "a whole URL, at the size a page shows it")
+```
+
+| Method | What it does |
+|---|---|
+| `Omit(fields...)` | leaves fields out of what is written, expected and described |
+| `Rename(field, name)` | names a field exactly; no naming strategy respells it |
+| `Represent(field, shape, to, from)` | writes a field as another type and converts it back when read |
+| `Reshape(field, shape)` | writes a field through another schema of its own type, such as a nested object's projection |
+| `Describe(field, doc)` | gives a field this projection's own prose |
+
+A projection that leaves members out is read back through the constructor: an
+`Object`'s constructor is given them as absent and decides, so its rules hold
+either way. A `Struct` has nothing to decide, so its projection refuses to be
+read back rather than filling the members with zeros.
+
+## Naming strategies
+
+A field is named once. A format states how it spells names -- a naming strategy,
+as Quill and zio-json call it -- and every member it writes or reads is spelled
+that way:
+
+```go
+schema.EncodeJSON(FilmSchema, film, schema.MemberNaming(naming.CamelCase))
+structure.Spelled(FilmSchema.Structure(), naming.CamelCase) // for a projection
+```
+
+- **Strategies:** `naming.Literal` (the default: as declared), `CamelCase`,
+  `PascalCase`, `SnakeCase`, `KebabCase`, and `naming.Custom` for one of the
+  program's own.
+- **A name is words.** `naming.Words` splits at separators and case changes, so
+  `syncedAt`, `SyncedAt`, `synced_at` and `synced-at` are all *synced, at*, and
+  any of them respells into any strategy. `imdbID` is *imdb, id*, so camelCase
+  writes `imdbId`.
+- **Reading is strict.** A document read with a strategy must spell its members
+  that way; a member spelled otherwise is unknown, as a misspelt one would be.
+- **Exact names stay exact.** A name given with `Rename` is written as given
+  under every strategy, and `Spelled` leaves it as it is.
+- **Two fields a strategy spells alike** are refused when a value is written or
+  read with that strategy, naming both.
+- **Data is never respelled:** a map's keys, and a union's variant names, which
+  are values saying which variant a value is. A tagged union's tag *field* is a
+  member, and is respelled.
+
+A web surface states its strategy once, with `Routes.WithNaming`, and every
+entity, response, declaration and socket message it carries follows it.
 
 ## Describing a shape with no Go type
 
@@ -54,7 +160,7 @@ var Book = schema.Struct[dynamic.Value]("Book",
 )
 ```
 
-`DynamicField` is `FieldOf` without the getter and setter — the only part of a
+`DynamicField` is `FieldOf` without the accessors — the only part of a
 field declaration that needs the Go type, so leaving them out is exactly the
 difference between *describing* a shape and *binding* one. `DynamicVariant` is
 `VariantOf` without the narrowing, for the same reason: a described value
@@ -172,8 +278,9 @@ type Item struct {
 }
 
 var ItemSchema = schema.Struct[Item]("Item",
-    schema.FieldOf("sku",
-        schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")), get, set),
+    schema.FieldAt("sku",
+        schema.Text().Check(schema.Pattern("^[A-Z]{3}-[0-9]{5}$")),
+        func(item *Item) *string { return &item.Sku }),
     ...
 )
 ```
@@ -198,8 +305,8 @@ description as well would be the duplicate.
 Generation runs one way. A Go struct cannot be derived from a `Schema[A]`,
 because that value names `A` and so `A` must exist for the schema to compile at
 all. For a Go type you already have — a domain type with methods, one from
-another package — the schema is written with `Struct` and `FieldOf`, which is
-what those are for; `examples/catalog` does it that way.
+another package — the schema is written with `Struct` and `FieldAt`, or with
+`Object`, which is what those are for; `examples/catalog` does it that way.
 
 | In the description | In the generated code |
 |---|---|
@@ -230,12 +337,13 @@ changed without a regeneration fails there rather than at the next request.
 | `List(element)` | an ordered sequence; decodes to an empty slice, never nil |
 | `Map(value)` | string-keyed values; encoding sorts the keys |
 | `Nullable(inner)` | present and null, as a pointer -- not the same as an absent field |
-| `Struct(name, fields...)` | a fixed set of named fields |
+| `Struct(name, fields...)` | a fixed set of named fields, built by setting them |
+| `Object(name, construct, fields...)` | a fixed set of named fields, built by a constructor |
 | `Union(name, variants...)` | a choice between named alternatives |
 | `Suspend(resolve)` | a schema not built yet: itself, or another not yet written |
 
-`FieldOf` declares a required field and `OptionalFieldOf` one that may be
-absent. An optional field's getter reports presence, because an empty string
+`FieldAt` and `FieldOf` declare a required field and `OptionalFieldOf` one that
+may be absent. An optional field's getter reports presence, because an empty string
 that is meant to be sent is not the same as a field that is not there — and an
 absent field is omitted rather than written as null.
 
@@ -244,14 +352,14 @@ to remember about which wrap and which are called on what they change:
 
 ```go
 schema.Struct[Book]("Book", …).WithDescription("one entry")
-schema.FieldOf("note", schema.Text(), get, set).WithDescription("a note")
+schema.FieldAt("note", schema.Text(), at).WithDescription("a note")
 schema.VariantOf("circle", circleSchema, narrow, widen).WithDescription("a circle")
 schema.DynamicField("note", schema.Text()).Optional()
 ```
 
 `Optional()` applies to a field whose absence can be *seen* — a described field,
 where the member is either in the object or not. A field bound with `FieldOf`
-cannot be made optional this way, because its getter returns a value and not a
+or `FieldAt` cannot be made optional this way, because its getter returns a value and not a
 value and whether there is one; that is why `OptionalFieldOf` takes a different
 getter rather than this taking none.
 

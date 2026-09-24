@@ -25,5 +25,5 @@
 // value names A and so A must exist for the schema to compile at all; a
 // description that names no Go type compiles on its own, which is what makes
 // this the direction that works. A schema for a Go type you already have is
-// written with Struct and FieldOf, which is what those are for.
+// written with Struct and FieldAt, which is what those are for.
 package schemagen

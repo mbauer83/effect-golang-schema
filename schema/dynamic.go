@@ -86,9 +86,9 @@ func DynamicField[B any](name string, shape Schema[B]) Field[dynamic.Value, dyna
 		key:       &fieldKey{name: name},
 		node:      shape.Structure(),
 		fault:     Validate(codec),
-		derivable: func(value dynamic.Value) bool { return hasMember(value, name) },
-		encode: func(value dynamic.Value, into Sink) error {
-			member, present := memberOf(value, name)
+		derivable: func(value *dynamic.Value) bool { return hasMember(*value, name) },
+		encode: func(value *dynamic.Value, into Sink) error {
+			member, present := memberOf(*value, name)
 			if !present {
 				return fail("required member is missing", nil)
 			}

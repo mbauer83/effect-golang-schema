@@ -24,9 +24,9 @@ records the evidence.
 ## The two marks
 
 ```go
-schema.FieldOf("id", schema.Int64(), get, set).Identity().Computed()
-schema.FieldOf("reference", schema.UUID(), get, set).Identity()
-schema.FieldOf("placedAt", schema.Time(), get, set).Computed()
+schema.FieldAt("id", schema.Int64(), at).Identity().Computed()
+schema.FieldAt("reference", schema.UUID(), at).Identity()
+schema.FieldAt("placedAt", schema.Time(), at).Computed()
 ```
 
 **`Identity`** — the field that distinguishes one of these from another. A

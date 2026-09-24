@@ -4,12 +4,10 @@ A description of a value's shape, and everything that can be read off one.
 
 ```go
 var BookSchema = schema.Struct[Book]("Book",
-    schema.FieldOf("title", schema.Text().Check(schema.MinLength(1)),
-        func(book Book) string { return book.Title },
-        func(book *Book, title string) { book.Title = title }),
-    schema.FieldOf("pages", schema.Int32().Check(schema.AtLeast[int32](1)),
-        func(book Book) int32 { return book.Pages },
-        func(book *Book, pages int32) { book.Pages = pages }),
+    schema.FieldAt("title", schema.Text().Check(schema.MinLength(1)),
+        func(book *Book) *string { return &book.Title }),
+    schema.FieldAt("pages", schema.Int32().Check(schema.AtLeast[int32](1)),
+        func(book *Book) *int32 { return &book.Pages }),
 ).WithDescription("one book on the shelf")
 ```
 

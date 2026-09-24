@@ -121,3 +121,32 @@ func TestAFieldHasAtMostOneSetter(t *testing.T) {
 		t.Fatal("expected two setters to be refused")
 	}
 }
+
+func TestAPlainStructFieldIsDeclaredByWhereItIs(t *testing.T) {
+	type book struct {
+		Title string
+		Pages int64
+	}
+	pages := schema.FieldAt("pages", schema.Int64(), func(value *book) *int64 { return &value.Pages })
+	bookSchema := schema.Struct[book]("book",
+		schema.FieldAt("title", schema.Text(), func(value *book) *string { return &value.Title }),
+		pages)
+
+	encoded, err := schema.EncodeJSON(bookSchema, book{Title: "Dune", Pages: 412})
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := schema.DecodeJSON(bookSchema, encoded)
+	if err != nil || decoded != (book{Title: "Dune", Pages: 412}) {
+		t.Fatalf("expected the book back from %s, got %+v, %v", encoded, decoded, err)
+	}
+	// A field declared by where it is can be represented another way, as any
+	// field can.
+	asText := bookSchema.Represent(pages, schema.Text(),
+		func(count int64) string { return strings.Repeat("p", int(count%3)) },
+		func(text string) int64 { return int64(len(text)) })
+	decoded, err = schema.DecodeJSON(asText, []byte(`{"title":"Dune","pages":"pp"}`))
+	if err != nil || decoded.Pages != 2 {
+		t.Fatalf("expected the represented field set through its address, got %+v, %v", decoded, err)
+	}
+}

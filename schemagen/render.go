@@ -68,10 +68,8 @@ func renderField(out *bytes.Buffer, owner string, field structField) {
 }
 
 func renderRequired(out *bytes.Buffer, owner string, field structField) {
-	fmt.Fprintf(out, "schema.FieldOf(%s, %s,\n", strconv.Quote(field.wire), field.shape)
-	fmt.Fprintf(out, "func(value %s) %s { return value.%s },\n",
-		owner, field.goType, field.name)
-	fmt.Fprintf(out, "func(value *%s, field %s) { value.%s = field })",
+	fmt.Fprintf(out, "schema.FieldAt(%s, %s,\n", strconv.Quote(field.wire), field.shape)
+	fmt.Fprintf(out, "func(value *%s) *%s { return &value.%s })",
 		owner, field.goType, field.name)
 }
 

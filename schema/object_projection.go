@@ -85,8 +85,8 @@ func (schema Schema[A]) Represent[B, C any](field Field[A, B], shape Schema[C], 
 		if fault := Validate(shape); fault != nil {
 			current.fault = fault
 		}
-		current.encode = func(value A, into Sink) error {
-			member, present := lookup(value)
+		current.encode = func(value *A, into Sink) error {
+			member, present := lookup(*value)
 			if !present {
 				return into.Null()
 			}

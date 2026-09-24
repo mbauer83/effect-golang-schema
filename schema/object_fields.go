@@ -52,7 +52,9 @@ type erasedField[A any] struct {
 	// literalName says the name was given exactly, by a projection, and is
 	// not respelled by a format's naming strategy.
 	literalName bool
-	encode      func(A, Sink) error
+	// encode writes the field of the value pointed at. A pointer, so an
+	// object's value is addressed once rather than copied into every field.
+	encode func(*A, Sink) error
 	// decode writes the field into an A being built. It is nil for a field
 	// declared without a setter, which only Object can use.
 	decode func(*A, Source) error
@@ -61,11 +63,11 @@ type erasedField[A any] struct {
 	read func(Source) (slot, bool, error)
 	// present reports whether an optional field has a value to write. It is
 	// nil for a required field, which always has one.
-	present func(A) bool
+	present func(*A) bool
 	// derivable is the presence answer for a field whose absence can be seen
 	// from the value itself, which is the case for a described field: the
 	// member is in the object or it is not. Optional moves it into present.
-	derivable func(A) bool
+	derivable func(*A) bool
 }
 
 // fieldKey is what makes two copies of a field the same field. It has a
@@ -89,8 +91,8 @@ func FieldOf[A, B any](
 		node:  shape.node,
 		fault: Validate(shape),
 		key:   &fieldKey{name: name},
-		encode: func(value A, into Sink) error {
-			return Encode(shape, get(value), into)
+		encode: func(value *A, into Sink) error {
+			return Encode(shape, get(*value), into)
 		},
 		read: func(from Source) (slot, bool, error) {
 			value, err := Decode(shape, from)
@@ -119,6 +121,43 @@ func FieldOf[A, B any](
 	}
 }
 
+// FieldAt describes a required field of a plain struct by where it is: one
+// accessor answering the field's address, which is how the field is read and
+// how it is written.
+//
+//	schema.FieldAt("title", schema.Text(), func(book *Book) *string { return &book.Title })
+//
+// It is FieldOf with its getter and setter written once, for the common case
+// of a struct whose field holds the value as it is.
+func FieldAt[A, B any](name string, shape Schema[B], at func(*A) *B) Field[A, B] {
+	field := erasedField[A]{
+		name:  name,
+		node:  shape.node,
+		fault: Validate(shape),
+		key:   &fieldKey{name: name},
+		encode: func(value *A, into Sink) error {
+			return Encode(shape, *at(value), into)
+		},
+		read: func(from Source) (slot, bool, error) {
+			value, err := Decode(shape, from)
+			return typedSlot[B]{value: value}, true, err
+		},
+		decode: func(target *A, from Source) error {
+			value, err := Decode(shape, from)
+			if err != nil {
+				return err
+			}
+			*at(target) = value
+			return nil
+		},
+	}
+	return Field[A, B]{
+		erased: field,
+		lookup: func(value A) (B, bool) { return *at(&value), true },
+		set:    func(target *A, value B) { *at(target) = value },
+	}
+}
+
 // OptionalFieldOf describes a field that may be absent.
 //
 // The getter reports whether the value is present, so absence is a decision the
@@ -137,12 +176,12 @@ func OptionalFieldOf[A, B any](
 		optional: true,
 		fault:    Validate(shape),
 		key:      &fieldKey{name: name},
-		present: func(value A) bool {
-			_, ok := get(value)
+		present: func(value *A) bool {
+			_, ok := get(*value)
 			return ok
 		},
-		encode: func(value A, into Sink) error {
-			member, ok := get(value)
+		encode: func(value *A, into Sink) error {
+			member, ok := get(*value)
 			if !ok {
 				return into.Null()
 			}

@@ -25,7 +25,7 @@ renaming a Go field is safe and renumbering it is not, which is the opposite of
 every other projection here. So a number is declared, not derived:
 
 ```go
-schema.FieldOf("reference", schema.UUID(), get, set).WithNumber(1)
+schema.FieldAt("reference", schema.UUID(), at).WithNumber(1)
 schema.DynamicVariant("byRail", railSchema).WithNumber(2)
 ```
 
